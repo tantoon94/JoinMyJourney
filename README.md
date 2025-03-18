@@ -1,23 +1,26 @@
-# REPLACE WITH YOUR APP NAME
+# Join My Journey APP
 
-This is the Final assessment template for CASA0014 - Please use this template and edit the relevant sections to personalise.
-This section has a short introduction to what the application is
+It is a journey- and activity-suggesting app for pedestrians that specifies the route and points on the path where the activities take place.
 
-## Use this README File 
+## Who is the app for?
 
-Use this section to show us what your Mobile App is about.   Include a Screenshot to the App, link to the various frameworks you've used. Include your presentation video here that shows off your Mobile App.   Emojis are also fun to include 📱 😄
+- This app is for **Anyone** who would **like to** **explore** and **have fun** walking in the city
+- People who are looking for an **exciting and fulfilling activity to do** in the city, and have exhausted all their options.
+- **Travelers** who want to have an **unconventional experience** in a foreign city.
+- Dates that **seek new ideas**
+- Families who would like to **explore the city together**
+- Busy workers who struggle to come up with a fun **plan** for their time off
 
-Look at some other Flutter Apps online and see how they use there README File.  Good examples are:
+## What does the app do?
 
-- https://github.com/miickel/flutter_particle_clock
-- https://github.com/Tarikul711/flutter-food-delivery-app-ui    
-- https://github.com/mohak1283/Instagram-Clone
+This app suggests different routes to take in the city, with some locations to see or visit in a specified area to choose to follow and enjoy your time with friends or alone, depending on your preference. All of these routes are routes that users create based on their personal experience in the city. It is an Instagram with **maps**!
 
 
 ## Include A Section That Tells Developers How To Install The App
 
-Include a section that gives intructions on how to install the app or run it in Flutter.  What versions of the plugins are you assuming?  Maybe define a licence
+Include a section that gives instructions on installing or running the app in Flutter.  What versions of the plugins are you assuming?  Maybe define a licence
 
 ##  Contact Details
 
-Having Contact Details is also good as it shows people how to get in contact with you if they'd like to contribute to the app. 
+Tinasamie@outlook.com
+
