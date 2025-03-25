@@ -65,7 +65,7 @@ jobs:
           path: build/app/outputs/flutter-apk/*.apk
 
       - name: Save APPBUNDLE to Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: flutter-appbundle
           path: build/app/outputs/bundle/release/*.aab
