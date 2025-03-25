@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "348797359872",
+    "project_id": "join-my-journeys",
+    "storage_bucket": "join-my-journeys.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348797359872:android:97795515806551625885e5",
+        "android_client_info": {
+          "package_name": "com.example.join_my_journey"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8SJBnQo100HMcC0DBvnB5PGKyWk6b5JY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

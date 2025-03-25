@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/join_my_journey.iml" filepath="$PROJECT_DIR$/join_my_journey.iml" />
+      <module fileurl="file://$PROJECT_DIR$/android/join_my_journey_android.iml" filepath="$PROJECT_DIR$/android/join_my_journey_android.iml" />
+    </modules>
+  </component>
+</project>
