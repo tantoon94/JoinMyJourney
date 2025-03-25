@@ -17,13 +17,13 @@ tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.2'
+// buildscript {
+//     repositories {
+//         jcenter()
+//     }
+//     dependencies {
+//         classpath 'com.android.tools.build:gradle:2.1.2'
 
-        classpath 'com.google.gms:google-services:3.0.0'
-    }
-}
+//         classpath 'com.google.gms:google-services:3.0.0'
+//     }
+// }
