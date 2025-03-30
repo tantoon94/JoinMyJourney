@@ -19,6 +19,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: gradle
+          java-package: 'jdk'
+          architecture: 'x64'
+          check-latest: true
+
+      - name: Set JAVA_HOME
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> $GITHUB_ENV
+          echo "PATH=$JAVA_HOME_17_X64/bin:$PATH" >> $GITHUB_ENV
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
