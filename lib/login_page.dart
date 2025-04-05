@@ -14,7 +14,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String? _selectedUserType;
   bool _isLoading = false;
   final _authService = AuthService();
 
@@ -35,12 +34,7 @@ class _LoginPageState extends State<LoginPage> {
         _emailController.text,
         _passwordController.text,
       );
-      if (user != null) {
-        // Update user type if needed
-        if (_selectedUserType != null) {
-          await _authService.storeUserData(user, null, _selectedUserType);
-        }
-        // Navigate to home page
+      if (user != null && mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
@@ -63,67 +57,71 @@ class _LoginPageState extends State<LoginPage> {
             errorMessage = e.message ?? 'Login failed';
         }
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = await _authService.signInWithGoogle();
-      if (user != null) {
-        // Update user type if needed
-        if (_selectedUserType != null) {
-          await _authService.storeUserData(user, null, _selectedUserType);
-        }
-        // Navigate to home page
-        Navigator.pushReplacementNamed(context, '/home');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } catch (e) {
-      String errorMessage = 'Google sign in failed';
-      if (e is FirebaseAuthException) {
-        errorMessage = e.message ?? 'Google sign in failed';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundImage: AssetImage('assets/logo.png'),
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFFFD700), // Yellow color for the logo
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Join\nmy\njourney',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 48),
+                  const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+                  const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Color(0xFFF5F5F5),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
@@ -136,13 +134,15 @@ class _LoginPageState extends State<LoginPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Color(0xFFF5F5F5),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -154,63 +154,74 @@ class _LoginPageState extends State<LoginPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    value: _selectedUserType,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'regular',
-                        child: Text('Regular User'),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      DropdownMenuItem(
-                        value: 'researcher',
-                        child: Text('Researcher'),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'or use one of your social profiles',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          // Handle sign up
+                          showDialog(
+                            context: context,
+                            builder: (context) => const SignUpDialog(),
+                          );
+                        },
+                        child: const Text('Sign Up as'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Handle regular member
+                          showDialog(
+                            context: context,
+                            builder: (context) => const SignUpDialog(isResearcher: false),
+                          );
+                        },
+                        child: const Text('Regular Member'),
                       ),
                     ],
-                    onChanged: (value) {
-                      setState(() => _selectedUserType = value);
-                    },
-                    hint: const Text('Select User Type'),
-                    validator: (value) {
-                      if (value == null) {
-                        return 'Please select a user type';
-                      }
-                      return null;
-                    },
                   ),
-                  const SizedBox(height: 20),
-                  if (_isLoading)
-                    const CircularProgressIndicator()
-                  else
-                    Column(
-                      children: [
-                        ElevatedButton(
-                          onPressed: _handleLogin,
-                          child: const Text('Login'),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: _handleGoogleSignIn,
-                          icon: const Icon(Icons.g_mobiledata),
-                          label: const Text('Sign in with Google'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 50),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => const SignUpDialog(),
-                            );
-                          },
-                          child: const Text('Sign Up'),
-                        ),
-                      ],
-                    ),
+                  TextButton(
+                    onPressed: () {
+                      // Handle forgot password
+                    },
+                    child: const Text('Forgot Password?'),
+                  ),
                 ],
               ),
             ),

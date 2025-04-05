@@ -3,7 +3,12 @@ import 'auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpDialog extends StatefulWidget {
-  const SignUpDialog({super.key});
+  final bool isResearcher;
+  
+  const SignUpDialog({
+    super.key,
+    this.isResearcher = true,
+  });
 
   @override
   State<SignUpDialog> createState() => _SignUpDialogState();
@@ -14,7 +19,6 @@ class _SignUpDialogState extends State<SignUpDialog> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _usernameController = TextEditingController();
-  String? _selectedUserType;
   bool _isLoading = false;
   final _authService = AuthService();
 
@@ -36,13 +40,13 @@ class _SignUpDialogState extends State<SignUpDialog> {
         _emailController.text,
         _passwordController.text,
         _usernameController.text,
-        _selectedUserType ?? 'regular',
+        widget.isResearcher ? 'researcher' : 'regular',
       );
 
       if (user != null && mounted) {
         Navigator.of(context).pop(); // Close the dialog
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Account created successfully!'),
             backgroundColor: Colors.green,
           ),
@@ -83,24 +87,41 @@ class _SignUpDialogState extends State<SignUpDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Create Account',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Create Account',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 24),
                 TextFormField(
                   controller: _usernameController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Username',
                     border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFFF5F5F5),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -112,12 +133,14 @@ class _SignUpDialogState extends State<SignUpDialog> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Email',
                     border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFFF5F5F5),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
@@ -130,12 +153,14 @@ class _SignUpDialogState extends State<SignUpDialog> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Password',
                     border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFFF5F5F5),
                   ),
                   obscureText: true,
                   validator: (value) {
@@ -148,51 +173,42 @@ class _SignUpDialogState extends State<SignUpDialog> {
                     return null;
                   },
                 ),
-                SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: _selectedUserType,
-                  decoration: InputDecoration(
-                    labelText: 'User Type',
-                    border: OutlineInputBorder(),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _handleSignUp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'regular',
-                      child: Text('Regular User'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'researcher',
-                      child: Text('Researcher'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedUserType = value);
-                  },
-                  validator: (value) {
-                    if (value == null) {
-                      return 'Please select a user type';
-                    }
-                    return null;
-                  },
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Sign Up as ${widget.isResearcher ? 'Researcher' : 'Regular Member'}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
-                SizedBox(height: 20),
-                if (_isLoading)
-                  CircularProgressIndicator()
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text('Cancel'),
-                      ),
-                      SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _handleSignUp,
-                        child: Text('Sign Up'),
-                      ),
-                    ],
+                const SizedBox(height: 16),
+                const Text(
+                  'or use one of your social profiles',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
                   ),
+                ),
               ],
             ),
           ),
