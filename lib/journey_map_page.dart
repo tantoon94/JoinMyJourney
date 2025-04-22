@@ -22,6 +22,7 @@ class _JourneyMapPageState extends State<JourneyMapPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _journeyId;
+  DateTime? _startTime;
 
   @override
   void initState() {
@@ -83,18 +84,88 @@ class _JourneyMapPageState extends State<JourneyMapPage> {
       _isTracking = true;
       _routePoints = [];
       _polylines = {};
+      _startTime = DateTime.now();
     });
 
     // Create new journey document
     final user = _auth.currentUser;
-    if (user != null) {
-      final journeyRef = await _db.collection('journeys').add({
-        'userId': user.uid,
-        'startTime': FieldValue.serverTimestamp(),
-        'route': [],
-      });
-      _journeyId = journeyRef.id;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated')),
+      );
+      return;
     }
+
+    // Get user data
+    final userDoc = await _db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User data not found')),
+      );
+      return;
+    }
+
+    final userData = userDoc.data();
+    if (userData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User data is null')),
+      );
+      return;
+    }
+
+    final username = userData['username'] as String?;
+    if (username == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username not found')),
+      );
+      return;
+    }
+
+    // Create journey document
+    final journeyData = {
+      'title': 'Tracked Journey',
+      'description': 'Journey tracked in real-time',
+      'creatorId': user.uid,
+      'creatorName': username,
+      'creatorPhotoUrl': userData['photoUrl'] ?? '',
+      'category': 'Missions',
+      'recommendedPeople': 1,
+      'estimatedCost': 0.0,
+      'durationInHours': 0.0,
+      'steps': [],
+      'waypoints': [],
+      'trackPoints': [],
+      'createdAt': FieldValue.serverTimestamp(),
+      'likes': 0,
+      'isPublic': true,
+    };
+
+    // Save journey using batch write
+    final batch = _db.batch();
+    
+    // Add to main journeys collection
+    final journeyRef = _db.collection('journeys').doc();
+    batch.set(journeyRef, journeyData);
+    
+    // Add to user's journeys subcollection
+    final userJourneyRef = _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('journeys')
+        .doc(journeyRef.id);
+    batch.set(userJourneyRef, {
+      'journeyId': journeyRef.id,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    
+    // Update user's journey count
+    batch.update(
+      _db.collection('users').doc(user.uid),
+      {'journeyCount': FieldValue.increment(1)},
+    );
+
+    await batch.commit();
+    _journeyId = journeyRef.id;
 
     // Start location updates
     _positionStream = Geolocator.getPositionStream().listen((position) {
@@ -112,10 +183,10 @@ class _JourneyMapPageState extends State<JourneyMapPage> {
         };
       });
 
-      // Update route in Firestore
+      // Update track points in Firestore
       if (_journeyId != null) {
         _db.collection('journeys').doc(_journeyId).update({
-          'route': _routePoints.map((point) => {
+          'trackPoints': _routePoints.map((point) => {
             'latitude': point.latitude,
             'longitude': point.longitude,
           }).toList(),
@@ -130,11 +201,20 @@ class _JourneyMapPageState extends State<JourneyMapPage> {
       _isTracking = false;
     });
 
-    // Update journey end time
+    // Update journey with final data
     if (_journeyId != null) {
+      final distance = _calculateDistance();
+      final duration = _startTime != null
+          ? DateTime.now().difference(_startTime!).inHours.toDouble()
+          : 0.0;
+
       await _db.collection('journeys').doc(_journeyId).update({
-        'endTime': FieldValue.serverTimestamp(),
-        'distance': _calculateDistance(),
+        'title': 'Tracked Journey (${distance.toStringAsFixed(1)} km)',
+        'durationInHours': duration,
+        'trackPoints': _routePoints.map((point) => {
+          'latitude': point.latitude,
+          'longitude': point.longitude,
+        }).toList(),
       });
     }
   }

@@ -90,7 +90,7 @@ class _SearchPageState extends State<SearchPage> {
     final journeysQuery = await _db.collection('journeys')
         .where('isPublic', isEqualTo: true)
         .where('title', isGreaterThanOrEqualTo: _searchQuery)
-        .where('title', isLessThan: _searchQuery + 'z')
+        .where('title', isLessThan: '${_searchQuery}z')
         .limit(10) // Limit results for better performance
         .get();
 
@@ -102,7 +102,7 @@ class _SearchPageState extends State<SearchPage> {
 
     final usersQuery = await _db.collection('users')
         .where('username', isGreaterThanOrEqualTo: _searchQuery)
-        .where('username', isLessThan: _searchQuery + 'z')
+        .where('username', isLessThan: '${_searchQuery}z')
         .limit(10) // Limit results for better performance
         .get();
 

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'home_page.dart';
-import 'login_page.dart';
 import 'profile_page.dart';
+import 'login_page.dart';
+import 'feed_page.dart';
+import 'saved_page.dart';
+import 'create_journey_page.dart';
+import 'journeys_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -29,10 +32,65 @@ class MyApp extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasData) {
-            return const HomePage();
+            return const MainNavigator();
           }
           return const LoginPage();
         },
+      ),
+    );
+  }
+}
+
+class MainNavigator extends StatefulWidget {
+  const MainNavigator({super.key});
+
+  @override
+  State<MainNavigator> createState() => _MainNavigatorState();
+}
+
+class _MainNavigatorState extends State<MainNavigator> {
+  int _selectedIndex = 0;
+
+  static const List<Widget> _pages = [
+    ProfilePage(),
+    JourneysPage(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateJourneyPage(),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map),
+            label: 'Journeys',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
