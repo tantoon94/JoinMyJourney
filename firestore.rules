@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidUserData() {
+      return request.resource.data.keys().hasAll(['displayName', 'email', 'userType', 'lastUpdated']) &&
+             request.resource.data.displayName is string &&
+             request.resource.data.email is string &&
+             request.resource.data.userType in ['regular', 'researcher'];
+    }
+    
+    function isValidJourneyData() {
+      return request.resource.data.keys().hasAll(['title', 'description', 'creatorId', 'category', 'createdAt']) &&
+             request.resource.data.title is string &&
+             request.resource.data.description is string &&
+             request.resource.data.creatorId is string &&
+             request.resource.data.category is string;
+    }
+    
+    function isValidStopData() {
+      return request.resource.data.keys().hasAll(['name', 'description', 'location', 'order', 'journeyId']) &&
+             request.resource.data.name is string &&
+             request.resource.data.description is string &&
+             request.resource.data.location is map &&
+             request.resource.data.order is number &&
+             request.resource.data.journeyId is string;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUserData();
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+      
+      // User's journeys subcollection
+      match /journeys/{journeyId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    // Journeys collection
+    match /journeys/{journeyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidJourneyData();
+      allow update: if isAuthenticated() && (isOwner(resource.data.creatorId) || isOwner(request.resource.data.creatorId));
+      allow delete: if isAuthenticated() && isOwner(resource.data.creatorId);
+      
+      // Stops subcollection
+      match /stops/{stopId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(get(/databases/$(database)/documents/journeys/$(journeyId)).data.creatorId);
+      }
+      
+      // Likes subcollection
+      match /likes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    // Followers collection
+    match /followers/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      match /userFollowers/{followerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(followerId);
+      }
+      
+      match /userFollowing/{followingId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    // Pins collection
+    match /pins/{pinId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+  }
+} 

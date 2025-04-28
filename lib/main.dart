@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'profile_page.dart';
-import 'login_page.dart';
-import 'feed_page.dart';
-import 'saved_page.dart';
-import 'create_journey_page.dart';
-import 'journeys_page.dart';
+import 'pages/profile_page.dart';
+import 'pages/login_page.dart';
+import 'pages/feed_page.dart';
+import 'pages/search_page.dart';
+import 'pages/shadowed_journeys_page.dart';
+import 'pages/create_journey_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,23 +20,91 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Join My Journey',
+      title: 'JoinMyJourney',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
+        primarySwatch: Colors.amber,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1E1E1E),
+        cardColor: const Color(0xFF2A2A2A),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[800],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.amber, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.amber,
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          color: const Color(0xFF2A2A2A),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1E1E1E),
+          elevation: 0,
+          centerTitle: true,
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasData) {
-            return const MainNavigator();
-          }
-          return const LoginPage();
-        },
-      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.amber,
+                  ),
+                ),
+              );
+            }
+            if (snapshot.hasData) {
+              return const MainNavigator();
+            }
+            return const LoginPage();
+          },
+        ),
+        '/login': (context) => const LoginPage(),
+        '/main': (context) => const MainNavigator(),
+        '/create_journey': (context) => const CreateJourneyPage(),
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => const LoginPage(),
+        );
+      },
     );
   }
 }
@@ -51,9 +119,11 @@ class MainNavigator extends StatefulWidget {
 class _MainNavigatorState extends State<MainNavigator> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = [
-    ProfilePage(),
-    JourneysPage(),
+  static final List<Widget> _pages = <Widget>[
+    const FeedPage(),
+    const ShadowedJourneysPage(),
+    const SearchPage(),
+    const ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -62,35 +132,67 @@ class _MainNavigatorState extends State<MainNavigator> {
     });
   }
 
+  Future<void> _createNewJourney(BuildContext context) async {
+    try {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CreateJourneyPage(
+            isEditing: false,
+          ),
+          fullscreenDialog: true,
+        ),
+      );
+
+      if (result == true && mounted) {
+        // Refresh the current page if needed
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error creating journey: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating journey: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreateJourneyPage(),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
+        onPressed: () => _createNewJourney(context),
+        backgroundColor: Colors.amber,
+        child: const Icon(Icons.add, color: Colors.black),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Feed',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_walk),
+            label: 'Shadowing',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Journeys',
-          ),
         ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
     );
   }
