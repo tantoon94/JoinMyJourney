@@ -9,6 +9,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'profile_settings_page.dart';
 import '../utils/image_handler.dart';
 import 'create_journey_page.dart';
+import '../utils/firestore_utils.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -106,42 +107,61 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserData() async {
     final user = _auth.currentUser;
     if (user != null) {
-      // Get user data
-      final userData = await _db.collection('users').doc(user.uid).get();
-      
-      // Get journey count
-      final journeySnapshot = await _db
-          .collection('journeys')
-          .where('creatorId', isEqualTo: user.uid)
-          .get();
-      
-      // Get followers count
-      final followersSnapshot = await _db
-          .collection('followers')
-          .doc(user.uid)
-          .collection('userFollowers')
-          .get();
-      
-      // Get following count
-      final followingSnapshot = await _db
-          .collection('followers')
-          .doc(user.uid)
-          .collection('userFollowing')
-          .get();
-      
-      if (userData.exists) {
-        setState(() {
-          _username = userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
-          _bio = userData.data()?['bio'];
-          _bioController.text = _bio ?? '';
-          _theme = userData.data()?['theme'];
-          _journeyCount = journeySnapshot.docs.length;
-          _shadowersCount = followersSnapshot.docs.length;
-          _shadowingCount = followingSnapshot.docs.length;
-          _plansPercentage = userData.data()?['plansPercentage'] ?? 0.4;
-          _missionsPercentage = userData.data()?['missionsPercentage'] ?? 0.35;
-          _adventuresPercentage = userData.data()?['adventuresPercentage'] ?? 0.25;
-        });
+      try {
+        // Get user data with retry
+        final userData = await FirestoreUtils.withRetry(
+          operation: () => _db.collection('users').doc(user.uid).get(),
+        );
+        
+        // Get journey count with retry
+        final journeySnapshot = await FirestoreUtils.withRetry(
+          operation: () => _db
+              .collection('journeys')
+              .where('creatorId', isEqualTo: user.uid)
+              .get(),
+        );
+        
+        // Get followers count with retry
+        final followersSnapshot = await FirestoreUtils.withRetry(
+          operation: () => _db
+              .collection('followers')
+              .doc(user.uid)
+              .collection('userFollowers')
+              .get(),
+        );
+        
+        // Get following count with retry
+        final followingSnapshot = await FirestoreUtils.withRetry(
+          operation: () => _db
+              .collection('followers')
+              .doc(user.uid)
+              .collection('userFollowing')
+              .get(),
+        );
+        
+        if (userData.exists && mounted) {
+          setState(() {
+            _username = userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
+            _bio = userData.data()?['bio'];
+            _bioController.text = _bio ?? '';
+            _theme = userData.data()?['theme'];
+            _journeyCount = journeySnapshot.docs.length;
+            _shadowersCount = followersSnapshot.docs.length;
+            _shadowingCount = followingSnapshot.docs.length;
+            _plansPercentage = userData.data()?['plansPercentage'] ?? 0.4;
+            _missionsPercentage = userData.data()?['missionsPercentage'] ?? 0.35;
+            _adventuresPercentage = userData.data()?['adventuresPercentage'] ?? 0.25;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error loading user data: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -150,18 +170,19 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = _auth.currentUser;
     if (user != null) {
       try {
-        // Use set with merge option instead of update to create the document if it doesn't exist
-        await _db.collection('users').doc(user.uid).set({
-          'bio': _bioController.text,
-          'displayName': _username ?? user.displayName ?? '[Name]', // Preserve existing display name
-          'createdAt': FieldValue.serverTimestamp(), // Add timestamp if document is new
-        }, SetOptions(merge: true)); // merge: true ensures we don't overwrite existing fields
+        await FirestoreUtils.withRetry(
+          operation: () => _db.collection('users').doc(user.uid).set({
+            'bio': _bioController.text,
+            'displayName': _username ?? user.displayName ?? '[Name]',
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
+        );
         
-        setState(() {
-          _bio = _bioController.text;
-          _isEditingBio = false;
-        });
         if (mounted) {
+          setState(() {
+            _bio = _bioController.text;
+            _isEditingBio = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Bio updated successfully'),
@@ -184,14 +205,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showHeartAnimation(BuildContext context) {
+    if (!mounted) return;
+    
     setState(() {
       _showHeart = true;
     });
 
     Future.delayed(const Duration(milliseconds: 300), () {
-      setState(() {
-        _showHeart = false;
-      });
+      if (mounted) {
+        setState(() {
+          _showHeart = false;
+        });
+      }
     });
   }
 
