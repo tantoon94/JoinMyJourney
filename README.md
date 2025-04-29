@@ -5,7 +5,7 @@
 Discover personalised routes users create based on their own experiences, complete with exciting stops and activities. It's like Instagram, but with maps! Follow others' journeys, create your own, and share the fun with friends or go solo. Perfect for dates, busy workers, and anyone looking to make the most of their time in the city.
 
 ## Who is the app for?
-
+<img src="https://via.placeholder.com/250x500?text=Journey+Details" width="200"/>
 - **Explorers**: Anyone who wants to discover new places and experiences in their city.
 - **Travelers**: Visitors seeking unconventional, local experiences.
 - **Families & Friends**: Groups looking for fun, curated walking adventures.
@@ -20,11 +20,11 @@ Discover personalised routes users create based on their own experiences, comple
 - Allows users to search, filter, and follow journeys by category, location, or creator.
 - Supports social sign-in (Google, Apple) and user profiles.
 
-## Screenshots
+## App wireframe layout
 
 <!-- Replace these links with your actual screenshots -->
-<img src="https://via.placeholder.com/250x500?text=Home+Screen" width="200"/>
-<img src="https://via.placeholder.com/250x500?text=Journey+Details" width="200"/>
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/Screenshot%202025-04-28%20184323.png" width="200"/>
+
 <img src="https://via.placeholder.com/250x500?text=Create+Journey" width="200"/>
 
 ## App Workflow
