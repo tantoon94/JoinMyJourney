@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/journey.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 
 class ShadowingPage extends StatefulWidget {
   final String journeyId;
@@ -27,54 +28,48 @@ class _ShadowingPageState extends State<ShadowingPage> {
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
   List<bool> _completedStops = [];
+  late Future<Map<String, dynamic>> _futureJourneyData;
 
   @override
   void initState() {
     super.initState();
-    _loadJourneyData();
+    _futureJourneyData = _loadJourneyData();
   }
 
-  Future<void> _loadJourneyData() async {
-    final journeyDoc = await _db.collection('journeys')
-        .doc(widget.journeyId)
-        .get();
-    if (!journeyDoc.exists) return;
-
-    setState(() {
-      _journeyData = journeyDoc.data();
-    });
-
+  Future<Map<String, dynamic>> _loadJourneyData() async {
+    final journeyDoc =
+        await _db.collection('journeys').doc(widget.journeyId).get();
+    if (!journeyDoc.exists) throw Exception('Journey not found');
+    final journeyData = journeyDoc.data()!;
     // Get route points from subcollection
-    final routeDoc = await _db.collection('journeys')
-        .doc(widget.journeyId)
-        .collection('route')
-        .doc('points')
-        .get();
-    
+    final routeDoc =
+        await journeyDoc.reference.collection('route').doc('points').get();
+    List<LatLng> route = [];
     if (routeDoc.exists) {
       final routeData = routeDoc.data()!;
-      setState(() {
-        _route = (routeData['points'] as List<dynamic>? ?? [])
-            .map((point) => LatLng(point['lat'], point['lng']))
-            .toList();
-      });
-    }
-
-    // Get stops from subcollection
-    final stopsSnapshot = await _db.collection('journeys')
-        .doc(widget.journeyId)
-        .collection('stops')
-        .orderBy('order')
-        .get();
-    
-    setState(() {
-      _stops = stopsSnapshot.docs
-          .map((doc) => Stop.fromMap(doc.data()))
+      route = (routeData['points'] as List<dynamic>? ?? [])
+          .where((point) =>
+              point['latitude'] != null && point['longitude'] != null)
+          .map((point) => LatLng(
+                (point['latitude'] as num).toDouble(),
+                (point['longitude'] as num).toDouble(),
+              ))
           .toList();
-      _completedStops = List.filled(_stops.length, false);
-    });
-
-    _updateMapFeatures();
+    }
+    // Get stops from subcollection
+    final stopsSnapshot =
+        await journeyDoc.reference.collection('stops').orderBy('order').get();
+    final stops =
+        stopsSnapshot.docs.map((doc) => Stop.fromMap(doc.data())).toList();
+    // Initialize completed stops if not already set
+    if (_completedStops.length != stops.length) {
+      _completedStops = List<bool>.filled(stops.length, false);
+    }
+    return {
+      'data': journeyData,
+      'route': route,
+      'stops': stops,
+    };
   }
 
   void _updateMapFeatures() {
@@ -131,212 +126,284 @@ class _ShadowingPageState extends State<ShadowingPage> {
     );
   }
 
-  Future<void> _shadowJourney() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      // Check if already shadowing
-      final existingShadow = await _db.collection('shadows')
-          .where('userId', isEqualTo: user.uid)
-          .where('journeyId', isEqualTo: widget.journeyId)
-          .where('status', isEqualTo: 'active')
-          .get();
-
-      if (existingShadow.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You are already shadowing this journey')),
-        );
-        return;
-      }
-
-      // Add shadow record
-      await _db.collection('shadows').add({
-        'userId': user.uid,
-        'journeyId': widget.journeyId,
-        'creatorId': widget.creatorId,
-        'status': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'completedStops': List.filled(_stops.length, false),
-        'currentStop': 0,
-      });
-
-      // Update journey shadowers count
-      await _db.collection('journeys').doc(widget.journeyId)
-          .update({'shadowers': FieldValue.increment(1)});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are now shadowing this journey!')),
-      );
-    } catch (e) {
-      print('Error shadowing journey: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error shadowing journey: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2A2A2A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          _journeyData?['title'] ?? 'Loading...',
-          style: const TextStyle(color: Colors.white),
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(51.5074, -0.1278), // London
-                    zoom: 13,
-                  ),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    _updateMapFeatures();
-                  },
-                  markers: _markers,
-                  polylines: _polylines,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  mapType: MapType.normal,
-                ),
-                if (_journeyData == null)
-                  const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.all(16),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _futureJourneyData,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          print('ShadowingPage error: \\${snapshot.error}');
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    _journeyData?['location'] ?? '',
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  const Text('An error occurred while loading the journey.'),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        '${_journeyData?['likes'] ?? 0} ',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      const Icon(Icons.favorite, color: Colors.white, size: 18),
-                      const Spacer(),
-                      const Icon(Icons.local_fire_department, color: Colors.white, size: 18),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.attach_money, color: Colors.white, size: 18),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.people, color: Colors.white, size: 18),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _stops.length,
-                      itemBuilder: (context, index) {
-                        final stop = _stops[index];
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(right: 4.0),
-                              child: Icon(Icons.emoji_events, color: Colors.amber, size: 20),
-                            ),
-                            Checkbox(
-                              value: _completedStops[index],
-                              onChanged: (val) {
-                                setState(() {
-                                  _completedStops[index] = val ?? false;
-                                });
-                              },
-                              activeColor: Colors.amber,
-                            ),
-                            Expanded(
-                              child: Text(
-                                '${index + 1}. ${stop.name}',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: _completedStops[index]
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () {
-                          // TODO: Implement directions
-                        },
-                        icon: const Icon(Icons.pin_drop, color: Colors.black),
-                        label: const Text('Get Directions', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          // TODO: Implement share
-                        },
-                        icon: const Icon(Icons.share, color: Colors.black),
-                        label: const Text('Share', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.directions_walk),
-                      label: const Text('Shadow this journey'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: _shadowJourney,
-                    ),
-                  ),
+                  Text(snapshot.error?.toString() ?? 'Unknown error',
+                      style: const TextStyle(color: Colors.red)),
                 ],
               ),
             ),
+          );
+        }
+        final data = snapshot.data!['data'] as Map<String, dynamic>;
+        final route = snapshot.data!['route'] as List<LatLng>;
+        final stops = snapshot.data!['stops'] as List<Stop>;
+        // Ensure _stops and _route are up to date for map features and completion logic
+        if (_stops != stops || _route != route) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _stops = stops;
+              _route = route;
+              _updateMapFeatures();
+            });
+          });
+        }
+        // Defensive: ensure _completedStops is correct length
+        if (_completedStops.length != stops.length) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _completedStops = List<bool>.filled(stops.length, false);
+            });
+          });
+        }
+        final allCompleted =
+            _completedStops.isNotEmpty && _completedStops.every((c) => c);
+        return Scaffold(
+          backgroundColor: const Color(0xFF2A2A2A),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              data['title'] ?? 'Loading...',
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
-        ],
-      ),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Always show the interactive map with route and markers
+              SizedBox(
+                height: 200,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: route.isNotEmpty
+                          ? CameraPosition(target: route[0], zoom: 13)
+                          : const CameraPosition(
+                              target: LatLng(51.5074, -0.1278), zoom: 13),
+                      onMapCreated: (controller) {
+                        _mapController = controller;
+                        _updateMapFeatures();
+                      },
+                      markers: _markers,
+                      polylines: _polylines,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: true,
+                      mapType: MapType.normal,
+                    ),
+                  ],
+                ),
+              ),
+              // Journey Info
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data['location'] ?? '',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '${data['likes'] ?? 0} ',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const Icon(Icons.favorite,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 16),
+                        const Icon(Icons.local_fire_department,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.attach_money,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.people, color: Colors.white, size: 18),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Checklist of Stops
+              Expanded(
+                child: stops.isEmpty
+                    ? const Center(
+                        child: Text('No stops found for this journey',
+                            style: TextStyle(color: Colors.white)))
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ListView.builder(
+                          itemCount: stops.length,
+                          itemBuilder: (context, index) {
+                            final stop = stops[index];
+                            return Container(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[850],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding:
+                                        EdgeInsets.only(right: 4.0, top: 4),
+                                    child: Icon(Icons.emoji_events,
+                                        color: Colors.amber, size: 20),
+                                  ),
+                                  Checkbox(
+                                    value: _completedStops[index],
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _completedStops[index] = val ?? false;
+                                      });
+                                    },
+                                    activeColor: Colors.amber,
+                                  ),
+                                  if (stop.imageData != null &&
+                                      stop.imageData?['data'] != null)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 8.0),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Image.memory(
+                                          base64Decode(
+                                              stop.imageData?['data'] ?? ''),
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${index + 1}. ${stop.name}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            decoration: _completedStops[index]
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        if (stop.description.isNotEmpty)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 2.0),
+                                            child: Text(
+                                              stop.description,
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+              // Completed Button
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Completed'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          allCompleted ? Colors.green : Colors.grey,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    onPressed: allCompleted
+                        ? () async {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) return;
+                            // Find the shadow document
+                            final shadowQuery = await _db
+                                .collection('shadows')
+                                .where('userId', isEqualTo: user.uid)
+                                .where('journeyId', isEqualTo: widget.journeyId)
+                                .where('status', isEqualTo: 'active')
+                                .get();
+                            if (shadowQuery.docs.isNotEmpty) {
+                              final shadowDoc =
+                                  shadowQuery.docs.first.reference;
+                              await shadowDoc.update({
+                                'status': 'completed',
+                                'completedAt': FieldValue.serverTimestamp(),
+                                'completedStops': _completedStops,
+                              });
+                              // Increment journey shadowers count
+                              await _db
+                                  .collection('journeys')
+                                  .doc(widget.journeyId)
+                                  .update(
+                                      {'shadowers': FieldValue.increment(1)});
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Congratulations! Journey completed.')),
+                                );
+                                Navigator.of(context).pop();
+                              }
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
 double min(double a, double b) => a < b ? a : b;
-double max(double a, double b) => a > b ? a : b; 
+double max(double a, double b) => a > b ? a : b;

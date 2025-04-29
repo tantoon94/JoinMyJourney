@@ -166,8 +166,10 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildStatColumn('Journeys', userData['journeyCount'] ?? 0),
-                    _buildStatColumn('Followers', userData['followersCount'] ?? 0),
-                    _buildStatColumn('Following', userData['followingCount'] ?? 0),
+                    _buildStatColumn(
+                        'Followers', userData['followersCount'] ?? 0),
+                    _buildStatColumn(
+                        'Following', userData['followingCount'] ?? 0),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -178,7 +180,8 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _toggleFollow,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFollowing ? Colors.grey[800] : Colors.amber,
+                        backgroundColor:
+                            _isFollowing ? Colors.grey[800] : Colors.amber,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -190,13 +193,15 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : Text(
                               _isFollowing ? 'Unfollow' : 'Follow',
                               style: TextStyle(
-                                color: _isFollowing ? Colors.white : Colors.black,
+                                color:
+                                    _isFollowing ? Colors.white : Colors.black,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -269,15 +274,21 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                                           CachedNetworkImage(
                                             imageUrl: data['mapThumbnailUrl'],
                                             fit: BoxFit.cover,
-                                            placeholder: (context, url) => Container(
+                                            placeholder: (context, url) =>
+                                                Container(
                                               color: Colors.grey[800],
                                               child: const Center(
-                                                child: CircularProgressIndicator(
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.amber),
                                                 ),
                                               ),
                                             ),
-                                            errorWidget: (context, url, error) => Container(
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    Container(
                                               color: Colors.grey[800],
                                               child: const Center(
                                                 child: Icon(
@@ -288,12 +299,17 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                                               ),
                                             ),
                                           )
-                                        else if (data['mapThumbnailData'] != null)
+                                        else if (data['mapThumbnailData'] !=
+                                            null)
                                           Image.memory(
-                                            base64Decode(data['mapThumbnailData']['data']),
+                                            base64Decode(
+                                                data['mapThumbnailData']
+                                                    ['data']),
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              print('Error loading map thumbnail: $error');
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              print(
+                                                  'Error loading map thumbnail: $error');
                                               return Container(
                                                 color: Colors.grey[800],
                                                 child: const Center(
@@ -325,16 +341,19 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                                                 onTap: () {
                                                   Navigator.of(context).push(
                                                     MaterialPageRoute(
-                                                      builder: (context) => ShadowingPage(
+                                                      builder: (context) =>
+                                                          ShadowingPage(
                                                         journeyId: journey.id,
-                                                        creatorId: widget.userId,
+                                                        creatorId:
+                                                            widget.userId,
                                                       ),
                                                     ),
                                                   );
                                                 },
                                                 child: Container(
                                                   decoration: BoxDecoration(
-                                                    color: Colors.black.withOpacity(0.3),
+                                                    color: Colors.black
+                                                        .withOpacity(0.3),
                                                   ),
                                                   child: const Center(
                                                     child: Icon(
@@ -355,7 +374,8 @@ class _ProfilePreviewState extends State<ProfilePreview> {
                                 Padding(
                                   padding: const EdgeInsets.all(8),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         data['title'] ?? 'Untitled Journey',
@@ -439,4 +459,4 @@ class _ProfilePreviewState extends State<ProfilePreview> {
       ],
     );
   }
-} 
+}

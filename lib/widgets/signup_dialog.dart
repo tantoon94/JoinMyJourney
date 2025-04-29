@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpDialog extends StatefulWidget {
   final bool isResearcher;
-  
+
   const SignUpDialog({
     super.key,
     this.isResearcher = true,
@@ -36,14 +36,28 @@ class _SignUpDialogState extends State<SignUpDialog> {
     setState(() => _isLoading = true);
 
     try {
+      print('Starting signup process with email: ${_emailController.text}');
+      print('Username: ${_usernameController.text}');
+      print('User type: ${widget.isResearcher ? 'Researcher' : 'Regular Member'}');
+
+      if (_emailController.text.isEmpty || 
+          _passwordController.text.isEmpty || 
+          _usernameController.text.isEmpty) {
+        throw Exception('All fields are required');
+      }
+
       final user = await _authService.signUpWithEmail(
-        _emailController.text,
-        _passwordController.text,
-        _usernameController.text,
-        widget.isResearcher ? 'researcher' : 'regular',
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _usernameController.text.trim(),
+        widget.isResearcher ? 'Researcher' : 'Regular Member',
       );
 
-      if (user != null && mounted) {
+      if (user == null) {
+        throw Exception('Failed to create user account');
+      }
+
+      if (mounted) {
         Navigator.of(context).pop(); // Close the dialog
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -53,6 +67,7 @@ class _SignUpDialogState extends State<SignUpDialog> {
         );
       }
     } catch (e) {
+      print('Error during signup: $e');
       String errorMessage = 'Sign up failed';
       if (e is FirebaseAuthException) {
         switch (e.code) {
@@ -68,6 +83,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
           default:
             errorMessage = e.message ?? 'Sign up failed';
         }
+      } else {
+        errorMessage = e.toString();
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,13 +121,15 @@ class _SignUpDialogState extends State<SignUpDialog> {
                   children: [
                     Text(
                       'Create Account',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      onPressed:
+                          _isLoading ? null : () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
@@ -192,7 +211,8 @@ class _SignUpDialogState extends State<SignUpDialog> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : Text(

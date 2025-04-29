@@ -1,21 +1,14 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/journey.dart';
 import '../utils/image_handler.dart';
 import 'package:location/location.dart' as location;
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
-import 'package:http/http.dart' as http;
-import 'dart:ui' as ui;
-import '../services/map_thumbnail_service.dart';
 
 class CreateJourneyPage extends StatefulWidget {
   final String? journeyId;
@@ -37,20 +30,20 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  
+
   // Services
   final _db = FirebaseFirestore.instance;
   final _storage = FirebaseStorage.instance;
   final _auth = FirebaseAuth.instance;
   final _location = location.Location();
-  
+
   // Map related
   GoogleMapController? _mapController;
   LatLng _mapCenter = const LatLng(51.5074, -0.1278); // Default to London
   List<LatLng> _route = [];
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-  
+
   // Journey data
   List<Stop> _stops = [];
   String _selectedCategory = 'Adventures';
@@ -58,7 +51,7 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
   int _cost = 1;
   int _recommendedPeople = 2;
   double _durationInHours = 1.0;
-  
+
   // UI state
   bool _isSaving = false;
   bool _isTracking = false;
@@ -71,10 +64,10 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
   Duration _trackingDuration = Duration.zero;
   Timer? _trackingTimer;
   double _totalDistance = 0.0;
-  
+
   // Categories
   final List<String> _categories = ['Missions', 'Adventures', 'Chill'];
-  
+
   // Stop management
   final _stopTitleController = TextEditingController();
   final _stopDescriptionController = TextEditingController();
@@ -84,6 +77,17 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
   LatLng? _selectedLocation;
 
   bool _isInitialized = false;
+
+  // Add these fields to the state class
+  String? _originalTitle;
+  String? _originalDescription;
+  String? _originalLocation;
+  String? _originalCategory;
+  int? _originalDifficulty;
+  int? _originalCost;
+  int? _originalRecommendedPeople;
+  double? _originalDurationInHours;
+  int? _originalStopsCount;
 
   @override
   void initState() {
@@ -136,7 +140,8 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         final locationData = await _location.getLocation();
         if (mounted) {
           setState(() {
-            _mapCenter = LatLng(locationData.latitude!, locationData.longitude!);
+            _mapCenter =
+                LatLng(locationData.latitude!, locationData.longitude!);
           });
         }
       }
@@ -152,12 +157,12 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
   Future<void> _loadExistingJourney() async {
     try {
       setState(() => _isLoading = true);
-      
+
       final doc = await _db.collection('journeys').doc(widget.journeyId).get();
       if (!doc.exists) return;
 
       final data = doc.data()!;
-      
+
       setState(() {
         _titleController.text = data['title'] ?? '';
         _descriptionController.text = data['description'] ?? '';
@@ -167,27 +172,47 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         _cost = data['cost'] ?? 1;
         _recommendedPeople = data['recommendedPeople'] ?? 2;
         _durationInHours = (data['durationInHours'] ?? 1.0).clamp(0.5, 24.0);
+        // Store original values for unsaved changes detection
+        _originalTitle = _titleController.text;
+        _originalDescription = _descriptionController.text;
+        _originalLocation = _locationController.text;
+        _originalCategory = _selectedCategory;
+        _originalDifficulty = _difficulty;
+        _originalCost = _cost;
+        _originalRecommendedPeople = _recommendedPeople;
+        _originalDurationInHours = _durationInHours;
       });
 
       // Load route points
-      final routeDoc = await doc.reference.collection('route').doc('points').get();
+      final routeDoc =
+          await doc.reference.collection('route').doc('points').get();
       if (routeDoc.exists) {
         final routeData = routeDoc.data()!;
-        final points = (routeData['points'] as List<dynamic>).map((point) => LatLng(
-          point['lat'] as double,
-          point['lng'] as double,
-        )).toList();
-        setState(() => _route = points);
+        final points = (routeData['points'] as List<dynamic>)
+            .map((point) => LatLng(
+                  point['latitude'] as double,
+                  point['longitude'] as double,
+                ))
+            .toList();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setState(() {
+            _route = points;
+            _updateMapFeatures();
+          });
+        });
       }
 
       // Load stops
-      final stopsSnapshot = await doc.reference.collection('stops')
-          .orderBy('order')
-          .get();
-      
-      setState(() {
-        _stops = stopsSnapshot.docs.map((doc) => Stop.fromMap(doc.data())).toList();
-        _updateMapFeatures();
+      final stopsSnapshot =
+          await doc.reference.collection('stops').orderBy('order').get();
+      final stops =
+          stopsSnapshot.docs.map((doc) => Stop.fromMap(doc.data())).toList();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _stops = stops;
+          _updateMapFeatures();
+          _originalStopsCount = stops.length;
+        });
       });
     } catch (e) {
       if (mounted) {
@@ -217,17 +242,20 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         _trackingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
           if (mounted) {
             setState(() {
-              _trackingDuration = DateTime.now().difference(_trackingStartTime!);
+              _trackingDuration =
+                  DateTime.now().difference(_trackingStartTime!);
             });
           }
         });
 
         // Start location tracking
         _locationStreamSubscription?.cancel();
-        _locationStreamSubscription = _location.onLocationChanged.listen((locationData) {
+        _locationStreamSubscription =
+            _location.onLocationChanged.listen((locationData) {
           if (mounted) {
             setState(() {
-              final newPoint = LatLng(locationData.latitude!, locationData.longitude!);
+              final newPoint =
+                  LatLng(locationData.latitude!, locationData.longitude!);
               if (_route.isNotEmpty) {
                 final lastPoint = _route.last;
                 _totalDistance += Geolocator.distanceBetween(
@@ -314,7 +342,7 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
       }
       final stop = _stops.removeAt(oldIndex);
       _stops.insert(newIndex, stop);
-      
+
       // Update order numbers
       for (var i = 0; i < _stops.length; i++) {
         _stops[i] = Stop(
@@ -331,7 +359,7 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
           version: _stops[i].version + 1,
         );
       }
-      
+
       _updateMapFeatures();
     });
   }
@@ -412,21 +440,29 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         );
       }
 
-      // Capture map thumbnail
-      print('Starting map thumbnail capture...');
-      final mapThumbnailData = await _captureMapThumbnail();
-      print('Map thumbnail capture completed: ${mapThumbnailData != null}');
-      if (mapThumbnailData != null) {
-        print('Map thumbnail details:');
-        print('- Size: ${mapThumbnailData['size']} bytes');
-        print('- Type: ${mapThumbnailData['type']}');
-        print('- Dimensions: ${mapThumbnailData['dimensions']}');
+      // Generate Google Static Maps URL for map thumbnail
+      String generateStaticMapUrl(
+          List<LatLng> route, List<Stop> stops, String apiKey) {
+        final path = route.map((p) => '${p.latitude},${p.longitude}').join('|');
+        final markers = stops
+            .map((s) => '${s.location.latitude},${s.location.longitude}')
+            .join('|');
+        return 'https://maps.googleapis.com/maps/api/staticmap'
+            '?size=600x300'
+            '&path=color:0x0000ff|weight:5|$path'
+            '&markers=color:red|$markers'
+            '&key=AIzaSyBleoptuqG4muN960mY7UWdTUljJi_Fycc';
       }
 
+      final mapThumbnailUrl = generateStaticMapUrl(
+          _route, _stops, 'AIzaSyBleoptuqG4muN960mY7UWdTUljJi_Fycc');
+
       print('Creating journey reference...');
-      final journeyRef = _db.collection('journeys').doc(widget.journeyId ?? _db.collection('journeys').doc().id);
+      final journeyRef = _db
+          .collection('journeys')
+          .doc(widget.journeyId ?? _db.collection('journeys').doc().id);
       print('Journey reference created: ${journeyRef.path}');
-      
+
       print('Initializing batch write...');
       final batch = _db.batch();
       final now = DateTime.now();
@@ -445,19 +481,25 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         'cost': _cost,
         'recommendedPeople': _recommendedPeople,
         'durationInHours': _durationInHours,
-        'createdAt': widget.journeyId == null ? Timestamp.fromDate(now) : FieldValue.serverTimestamp(),
+        'createdAt': widget.journeyId == null
+            ? Timestamp.fromDate(now)
+            : FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'likes': 0,
         'shadowers': 0,
         'totalStops': _stops.length,
-        'mapThumbnailData': mapThumbnailData,
+        'mapThumbnailUrl': mapThumbnailUrl,
+        'imageData': _stops.isNotEmpty && _stops[0].imageData != null
+            ? _stops[0].imageData
+            : null,
         'status': 'active',
         'visibility': 'public',
         'lastModifiedBy': user.uid,
         'version': 1,
       };
 
-      print('Journey data prepared with fields: ${journeyData.keys.join(', ')}');
+      print(
+          'Journey data prepared with fields: ${journeyData.keys.join(', ')}');
       print('Adding journey metadata to batch...');
       batch.set(journeyRef, journeyData);
       print('Journey metadata added to batch');
@@ -470,13 +512,15 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
           'name': stop.name,
           'description': stop.description,
           'location': {
-            'lat': stop.location.latitude,
-            'lng': stop.location.longitude,
+            'latitude': stop.location.latitude,
+            'longitude': stop.location.longitude,
           },
           'order': stop.order,
           'notes': stop.notes,
           'imageData': stop.imageData,
-          'createdAt': widget.journeyId == null ? Timestamp.fromDate(now) : FieldValue.serverTimestamp(),
+          'createdAt': widget.journeyId == null
+              ? Timestamp.fromDate(now)
+              : FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
           'status': 'active',
           'version': 1,
@@ -488,11 +532,13 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
 
       // Save route points
       print('Preparing route points...');
-      final routePoints = _route.map((point) => {
-        'lat': point.latitude,
-        'lng': point.longitude,
-        'timestamp': Timestamp.fromDate(now),
-      }).toList();
+      final routePoints = _route
+          .map((point) => {
+                'latitude': point.latitude,
+                'longitude': point.longitude,
+                'timestamp': Timestamp.fromDate(now),
+              })
+          .toList();
       print('Route points prepared: ${routePoints.length} points');
 
       print('Adding route points to batch...');
@@ -515,16 +561,17 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         print('Saved journey details:');
         print('- Title: ${savedData['title']}');
         print('- Description: ${savedData['description']}');
-        print('- Map thumbnail present: ${savedData['mapThumbnailData'] != null}');
-        if (savedData['mapThumbnailData'] != null) {
-          print('- Map thumbnail size: ${savedData['mapThumbnailData']['size']} bytes');
+        print(
+            '- Map thumbnail present: ${savedData['mapThumbnailUrl'] != null}');
+        if (savedData['mapThumbnailUrl'] != null) {
+          print('- Map thumbnail URL: ${savedData['mapThumbnailUrl']}');
         }
       }
 
       if (mounted) {
         print('Closing loading dialog...');
         Navigator.of(context).pop();
-        
+
         print('Showing success message...');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -532,7 +579,7 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         print('Navigating to main page...');
         Navigator.pushReplacementNamed(context, '/main');
       }
@@ -542,7 +589,7 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
       if (mounted) {
         print('Closing loading dialog due to error...');
         Navigator.of(context).pop();
-        
+
         print('Showing error message...');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -557,68 +604,6 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
         setState(() => _isSaving = false);
       }
       print('=== Journey save process completed ===');
-    }
-  }
-
-  Future<Map<String, dynamic>?> _captureMapThumbnail() async {
-    if (_mapController == null) {
-      print('Map controller is null');
-      return null;
-    }
-
-    try {
-      print('Getting visible region...');
-      final bounds = await _mapController!.getVisibleRegion().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          print('Timeout getting visible region');
-          throw TimeoutException('Getting visible region timed out');
-        },
-      );
-      final center = LatLng(
-        (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
-        (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
-      );
-      print('Center calculated: ${center.latitude}, ${center.longitude}');
-
-      // Get stops locations
-      final stops = _stops.map((stop) => stop.location).toList();
-      print('Stops prepared: ${stops.length} stops');
-
-      // Try to generate thumbnail using Google Maps API
-      try {
-        final thumbnailData = await MapThumbnailService.generateThumbnail(
-          center: center,
-          stops: stops,
-          route: _route,
-          journeyId: widget.journeyId ?? 'new',
-        );
-
-        if (thumbnailData != null) {
-          print('Thumbnail generated successfully');
-          return thumbnailData;
-        }
-      } catch (e) {
-        print('Error generating thumbnail with Google Maps API: $e');
-        // Fall back to simple thumbnail
-        return await MapThumbnailService.generateFallbackThumbnail(
-          stops: stops,
-          journeyId: widget.journeyId ?? 'new',
-        );
-      }
-
-      return null;
-    } catch (e) {
-      print('Error capturing map thumbnail: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error capturing map thumbnail: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return null;
     }
   }
 
@@ -796,7 +781,8 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
                       onPressed: () async {
                         final image = await ImageHandler.pickImage(context);
                         if (image != null) {
-                          final imageData = await ImageHandler.getImageData(image);
+                          final imageData =
+                              await ImageHandler.getImageData(image);
                           if (imageData != null) {
                             setState(() => _stopImage = imageData);
                           }
@@ -827,7 +813,8 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
                     if (_stopDescriptionController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Please enter a description for the stop'),
+                          content:
+                              Text('Please enter a description for the stop'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -892,6 +879,90 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
     _stopImage = null;
   }
 
+  Future<bool> _onWillPop() async {
+    if (_isTracking) {
+      final shouldClose = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Stop Tracking?'),
+          content: const Text(
+              'You are currently tracking your journey. Do you want to stop tracking and close?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes'),
+            ),
+          ],
+        ),
+      );
+      if (shouldClose == true && mounted) {
+        _stopTracking();
+        return true;
+      }
+      return false;
+    }
+
+    if (_hasUnsavedChanges()) {
+      final shouldClose = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Unsaved Changes'),
+          content: const Text(
+              'You have unsaved changes. Do you want to discard them and close?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes'),
+            ),
+          ],
+        ),
+      );
+      return shouldClose ?? false;
+    }
+
+    return true;
+  }
+
+  void _handleClose() async {
+    final shouldClose = await _onWillPop();
+    if (shouldClose && mounted) {
+      Navigator.pushReplacementNamed(context, '/main');
+    }
+  }
+
+  bool _hasUnsavedChanges() {
+    if (widget.journeyId == null) {
+      // New journey
+      return _titleController.text.isNotEmpty ||
+          _descriptionController.text.isNotEmpty ||
+          _locationController.text.isNotEmpty ||
+          _stops.isNotEmpty;
+    } else {
+      // Editing existing journey
+      // Store original values when loading the journey for comparison
+      // You may need to add fields like _originalTitle, _originalDescription, etc.
+      return _titleController.text != (_originalTitle ?? '') ||
+          _descriptionController.text != (_originalDescription ?? '') ||
+          _locationController.text != (_originalLocation ?? '') ||
+          _selectedCategory != (_originalCategory ?? 'Adventures') ||
+          _difficulty != (_originalDifficulty ?? 1) ||
+          _cost != (_originalCost ?? 1) ||
+          _recommendedPeople != (_originalRecommendedPeople ?? 2) ||
+          _durationInHours != (_originalDurationInHours ?? 1.0) ||
+          _stops.length != (_originalStopsCount ?? 0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
@@ -904,231 +975,246 @@ class _CreateJourneyPageState extends State<CreateJourneyPage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-        ),
-        title: Text(widget.isEditing ? 'Edit Journey' : 'Create Journey'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _isSaving ? null : _saveJourney,
+    return WillPopScope(
+      onWillPop: () async {
+        return await _onWillPop();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: _isSaving ? null : _handleClose,
           ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Journey Details
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a title';
-                }
-                return null;
-              },
+          title: Text(widget.isEditing ? 'Edit Journey' : 'Create Journey'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _isSaving ? null : _saveJourney,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
+          ],
+        ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Journey Details
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title';
+                  }
+                  return null;
+                },
               ),
-              maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a description';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a location';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a location';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
 
-            // Journey Settings
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
+              // Journey Settings
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: _categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedCategory = value);
+                  }
+                },
               ),
-              items: _categories.map((category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedCategory = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Map
-            SizedBox(
-              height: 300,
-              child: Stack(
+              // Map
+              SizedBox(
+                height: 300,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      onMapCreated: (controller) => _mapController = controller,
+                      initialCameraPosition: CameraPosition(
+                        target: _mapCenter,
+                        zoom: 13,
+                      ),
+                      markers: _markers,
+                      polylines: _polylines,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: true,
+                      onTap: _handleMapTap,
+                    ),
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: Column(
+                        children: [
+                          FloatingActionButton(
+                            heroTag: 'create_main',
+                            onPressed: _isSaving
+                                ? null
+                                : (_isTracking
+                                    ? _stopTracking
+                                    : _startTracking),
+                            backgroundColor:
+                                _isTracking ? Colors.red : Colors.green,
+                            tooltip: _isTracking
+                                ? 'Stop Tracking'
+                                : 'Start Tracking',
+                            child: Icon(
+                                _isTracking ? Icons.stop : Icons.play_arrow),
+                          ),
+                          const SizedBox(height: 8),
+                          FloatingActionButton(
+                            heroTag: 'create_add_stop',
+                            onPressed: _isSaving ? null : _startAddingStop,
+                            backgroundColor: Colors.amber,
+                            tooltip: 'Add Stop',
+                            child: const Icon(Icons.add_location),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Tracking Controls
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  GoogleMap(
-                    onMapCreated: (controller) => _mapController = controller,
-                    initialCameraPosition: CameraPosition(
-                      target: _mapCenter,
-                      zoom: 13,
+                  if (_isTracking)
+                    Text(
+                      '${_trackingDuration.inHours}:${(_trackingDuration.inMinutes % 60).toString().padLeft(2, '0')}:${(_trackingDuration.inSeconds % 60).toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 18),
                     ),
-                    markers: _markers,
-                    polylines: _polylines,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    onTap: _handleMapTap,
-                  ),
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: Column(
-                      children: [
-                        FloatingActionButton(
-                          onPressed: _isSaving ? null : (_isTracking ? _stopTracking : _startTracking),
-                          backgroundColor: _isTracking ? Colors.red : Colors.green,
-                          tooltip: _isTracking ? 'Stop Tracking' : 'Start Tracking',
-                          child: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
-                        ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton(
-                          onPressed: _isSaving ? null : _startAddingStop,
-                          backgroundColor: Colors.amber,
-                          tooltip: 'Add Stop',
-                          child: const Icon(Icons.add_location),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Tracking Controls
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                if (_isTracking)
-                  Text(
-                    '${_trackingDuration.inHours}:${(_trackingDuration.inMinutes % 60).toString().padLeft(2, '0')}:${(_trackingDuration.inSeconds % 60).toString().padLeft(2, '0')}',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Stops List
-            const Text(
-              'Stops',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              // Stops List
+              const Text(
+                'Stops',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            ReorderableGridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 1,
-                childAspectRatio: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: _stops.length,
-              itemBuilder: (context, index) {
-                final stop = _stops[index];
-                return Card(
-                  key: ValueKey(stop.id),
-                  child: ListTile(
-                    leading: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${stop.order}',
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
+              const SizedBox(height: 8),
+              ReorderableGridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 1,
+                  childAspectRatio: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: _stops.length,
+                itemBuilder: (context, index) {
+                  final stop = _stops[index];
+                  return Card(
+                    key: ValueKey(stop.id),
+                    child: ListTile(
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${stop.order}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        stop.imageData != null
-                            ? ImageHandler.buildImagePreview(
-                                context: context,
-                                imageData: stop.imageData,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(Icons.place),
-                      ],
+                          const SizedBox(width: 8),
+                          stop.imageData != null
+                              ? ImageHandler.buildImagePreview(
+                                  context: context,
+                                  imageData: stop.imageData,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(Icons.place),
+                        ],
+                      ),
+                      title: Text(stop.name),
+                      subtitle: Text(stop.description),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _editStop(stop),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              setState(() {
+                                _stops.removeWhere((s) => s.id == stop.id);
+                                _updateMapFeatures();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    title: Text(stop.name),
-                    subtitle: Text(stop.description),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editStop(stop),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            setState(() {
-                              _stops.removeWhere((s) => s.id == stop.id);
-                              _updateMapFeatures();
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              onReorder: _reorderStops,
-            ),
-          ],
+                  );
+                },
+                onReorder: _reorderStops,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-} 
+}

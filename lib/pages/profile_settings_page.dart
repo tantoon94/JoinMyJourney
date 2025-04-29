@@ -52,7 +52,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       final userData = await _db.collection('users').doc(user.uid).get();
       if (userData.exists) {
         setState(() {
-          _nameController.text = userData.data()?['displayName'] ?? user.displayName ?? '';
+          _nameController.text =
+              userData.data()?['displayName'] ?? user.displayName ?? '';
         });
       }
     }
@@ -89,11 +90,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       if (_selectedImage != null) {
         try {
           final imageStorageService = ImageStorageService();
-          photoURL = await imageStorageService.uploadProfilePicture(_selectedImage!);
-          
+          photoURL =
+              await imageStorageService.uploadProfilePicture(_selectedImage!);
+
           // Update user profile
           await user.updatePhotoURL(photoURL);
-          
+
           // Update Firestore
           await _db.collection('users').doc(user.uid).set({
             'photoURL': photoURL,
@@ -106,7 +108,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       }
 
       // Update display name if changed
-      if (_nameController.text.isNotEmpty && _nameController.text != user.displayName) {
+      if (_nameController.text.isNotEmpty &&
+          _nameController.text != user.displayName) {
         await user.updateDisplayName(_nameController.text);
         await _db.collection('users').doc(user.uid).set({
           'displayName': _nameController.text,
@@ -191,7 +194,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.black),
+                          icon:
+                              const Icon(Icons.camera_alt, color: Colors.black),
                           onPressed: _pickImage,
                         ),
                       ),
@@ -234,7 +238,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Current Password
               TextFormField(
                 controller: _currentPasswordController,
@@ -251,7 +255,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureCurrentPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.amber,
                     ),
                     onPressed: () {
@@ -280,7 +286,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureNewPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.amber,
                     ),
                     onPressed: () {
@@ -320,7 +328,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.amber,
                     ),
                     onPressed: () {
@@ -371,4 +381,4 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       ),
     );
   }
-} 
+}

@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'journey_tracking_page.dart';
-import 'search_page.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'profile_settings_page.dart';
-import '../utils/image_handler.dart';
 import 'create_journey_page.dart';
-import '../utils/firestore_utils.dart';
+import '../widgets/journey_card.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -28,7 +23,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int _shadowingCount = 0;
   String? _theme;
   bool _showHeart = false;
-  
+
   // Pie chart data
   double _plansPercentage = 0.4;
   double _missionsPercentage = 0.35;
@@ -80,7 +75,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(
                       builder: (context) => const ProfileSettingsPage(),
                     ),
-                  ).then((_) => _loadUserData()); // Refresh profile data after returning
+                  ).then((_) =>
+                      _loadUserData()); // Refresh profile data after returning
                 },
               ),
               ListTile(
@@ -107,61 +103,44 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserData() async {
     final user = _auth.currentUser;
     if (user != null) {
-      try {
-        // Get user data with retry
-        final userData = await FirestoreUtils.withRetry(
-          operation: () => _db.collection('users').doc(user.uid).get(),
-        );
-        
-        // Get journey count with retry
-        final journeySnapshot = await FirestoreUtils.withRetry(
-          operation: () => _db
-              .collection('journeys')
-              .where('creatorId', isEqualTo: user.uid)
-              .get(),
-        );
-        
-        // Get followers count with retry
-        final followersSnapshot = await FirestoreUtils.withRetry(
-          operation: () => _db
-              .collection('followers')
-              .doc(user.uid)
-              .collection('userFollowers')
-              .get(),
-        );
-        
-        // Get following count with retry
-        final followingSnapshot = await FirestoreUtils.withRetry(
-          operation: () => _db
-              .collection('followers')
-              .doc(user.uid)
-              .collection('userFollowing')
-              .get(),
-        );
-        
-        if (userData.exists && mounted) {
-          setState(() {
-            _username = userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
-            _bio = userData.data()?['bio'];
-            _bioController.text = _bio ?? '';
-            _theme = userData.data()?['theme'];
-            _journeyCount = journeySnapshot.docs.length;
-            _shadowersCount = followersSnapshot.docs.length;
-            _shadowingCount = followingSnapshot.docs.length;
-            _plansPercentage = userData.data()?['plansPercentage'] ?? 0.4;
-            _missionsPercentage = userData.data()?['missionsPercentage'] ?? 0.35;
-            _adventuresPercentage = userData.data()?['adventuresPercentage'] ?? 0.25;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error loading user data: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      // Get user data
+      final userData = await _db.collection('users').doc(user.uid).get();
+
+      // Get journey count
+      final journeySnapshot = await _db
+          .collection('journeys')
+          .where('creatorId', isEqualTo: user.uid)
+          .get();
+
+      // Get followers count
+      final followersSnapshot = await _db
+          .collection('followers')
+          .doc(user.uid)
+          .collection('userFollowers')
+          .get();
+
+      // Get following count
+      final followingSnapshot = await _db
+          .collection('followers')
+          .doc(user.uid)
+          .collection('userFollowing')
+          .get();
+
+      if (userData.exists && mounted) {
+        setState(() {
+          _username =
+              userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
+          _bio = userData.data()?['bio'];
+          _bioController.text = _bio ?? '';
+          _theme = userData.data()?['theme'];
+          _journeyCount = journeySnapshot.docs.length;
+          _shadowersCount = followersSnapshot.docs.length;
+          _shadowingCount = followingSnapshot.docs.length;
+          _plansPercentage = userData.data()?['plansPercentage'] ?? 0.4;
+          _missionsPercentage = userData.data()?['missionsPercentage'] ?? 0.35;
+          _adventuresPercentage =
+              userData.data()?['adventuresPercentage'] ?? 0.25;
+        });
       }
     }
   }
@@ -170,19 +149,26 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = _auth.currentUser;
     if (user != null) {
       try {
-        await FirestoreUtils.withRetry(
-          operation: () => _db.collection('users').doc(user.uid).set({
-            'bio': _bioController.text,
-            'displayName': _username ?? user.displayName ?? '[Name]',
-            'createdAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true)),
-        );
-        
+        // Use set with merge option instead of update to create the document if it doesn't exist
+        await _db.collection('users').doc(user.uid).set(
+            {
+              'bio': _bioController.text,
+              'displayName': _username ??
+                  user.displayName ??
+                  '[Name]', // Preserve existing display name
+              'createdAt': FieldValue
+                  .serverTimestamp(), // Add timestamp if document is new
+            },
+            SetOptions(
+                merge:
+                    true)); // merge: true ensures we don't overwrite existing fields
+
         if (mounted) {
           setState(() {
             _bio = _bioController.text;
             _isEditingBio = false;
           });
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Bio updated successfully'),
@@ -206,22 +192,27 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _showHeartAnimation(BuildContext context) {
     if (!mounted) return;
-    
+
     setState(() {
       _showHeart = true;
     });
 
     Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _showHeart = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _showHeart = false;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = _auth.currentUser;
+    if (user == null) {
+      Future.microtask(() => Navigator.pushReplacementNamed(context, '/login'));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Theme(
       data: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: backgroundColor,
@@ -240,12 +231,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: IconButton(
-                      icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                      icon:
+                          const Icon(Icons.menu, color: Colors.white, size: 28),
                       onPressed: () => _showMenuOptions(context),
                     ),
                   ),
                 ),
-                
+
                 // Profile Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -266,9 +258,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                 children: [
                                   CircleAvatar(
                                     radius: 50,
-                                    backgroundImage: _auth.currentUser?.photoURL != null
-                                        ? NetworkImage(_auth.currentUser!.photoURL!)
-                                        : null,
+                                    backgroundImage:
+                                        _auth.currentUser?.photoURL != null
+                                            ? NetworkImage(
+                                                _auth.currentUser!.photoURL!)
+                                            : null,
                                     child: _auth.currentUser?.photoURL == null
                                         ? const Icon(Icons.person, size: 50)
                                         : null,
@@ -295,7 +289,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ),
-                          
+
                           // Pie Chart and Badges Column
                           Expanded(
                             child: Padding(
@@ -319,7 +313,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
                                               ),
-                                              titlePositionPercentageOffset: 0.5,
+                                              titlePositionPercentageOffset:
+                                                  0.5,
                                             ),
                                             PieChartSectionData(
                                               value: _missionsPercentage * 100,
@@ -331,10 +326,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
                                               ),
-                                              titlePositionPercentageOffset: 0.5,
+                                              titlePositionPercentageOffset:
+                                                  0.5,
                                             ),
                                             PieChartSectionData(
-                                              value: _adventuresPercentage * 100,
+                                              value:
+                                                  _adventuresPercentage * 100,
                                               color: surfaceColor,
                                               title: 'Adventures',
                                               radius: 40,
@@ -343,7 +340,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
                                               ),
-                                              titlePositionPercentageOffset: 0.5,
+                                              titlePositionPercentageOffset:
+                                                  0.5,
                                             ),
                                           ],
                                           sectionsSpace: 3,
@@ -419,7 +417,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ],
                       ),
-                      
+
                       // Editable Bio
                       const SizedBox(height: 24),
                       if (_isEditingBio)
@@ -428,7 +426,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             color: cardColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           child: Row(
                             children: [
                               Expanded(
@@ -444,31 +443,42 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.check, color: Colors.amber),
+                                icon: const Icon(Icons.check,
+                                    color: Colors.amber),
                                 onPressed: _updateBio,
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close, color: Colors.grey),
-                                onPressed: () => setState(() {
-                                  _isEditingBio = false;
-                                  _bioController.text = _bio ?? '';
-                                }),
+                                icon:
+                                    const Icon(Icons.close, color: Colors.grey),
+                                onPressed: () {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isEditingBio = false;
+                                      _bioController.text = _bio ?? '';
+                                    });
+                                  }
+                                },
                               ),
                             ],
                           ),
                         )
                       else
                         InkWell(
-                          onTap: () => setState(() {
-                            _isEditingBio = true;
-                            _bioController.text = _bio ?? '';
-                          }),
+                          onTap: () {
+                            if (mounted) {
+                              setState(() {
+                                _isEditingBio = true;
+                                _bioController.text = _bio ?? '';
+                              });
+                            }
+                          },
                           child: Container(
                             decoration: BoxDecoration(
                               color: cardColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             child: Row(
                               children: [
                                 Expanded(
@@ -476,11 +486,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                     _bio ?? 'Add a bio...',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      color: _bio == null ? Colors.grey : Colors.white,
+                                      color: _bio == null
+                                          ? Colors.grey
+                                          : Colors.white,
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.edit, color: Colors.amber, size: 20),
+                                const Icon(Icons.edit,
+                                    color: Colors.amber, size: 20),
                               ],
                             ),
                           ),
@@ -521,12 +534,14 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.add, size: 30, color: Colors.white),
+                            icon: const Icon(Icons.add,
+                                size: 30, color: Colors.white),
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const CreateJourneyPage(),
+                                  builder: (context) =>
+                                      const CreateJourneyPage(),
                                 ),
                               );
                             },
@@ -537,7 +552,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       StreamBuilder<QuerySnapshot>(
                         stream: _db
                             .collection('journeys')
-                            .where('creatorId', isEqualTo: _auth.currentUser?.uid)
+                            .where('creatorId',
+                                isEqualTo: _auth.currentUser?.uid)
                             .orderBy('createdAt', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
@@ -550,11 +566,14 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                           }
 
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
                           }
 
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
                             return const Center(
                               child: Text(
                                 'No journeys created yet',
@@ -629,244 +648,136 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildJourneyCard(DocumentSnapshot journey) {
-    final data = journey.data() as Map<String, dynamic>;
-    print('Building journey card for: ${data['title']}');
-    print('Map thumbnail data present: ${data['mapThumbnailData'] != null}');
-    print('Image data present: ${data['imageData'] != null}');
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      color: const Color(0xFF2A2A2A),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Journey Map Thumbnail
-          if (data['mapThumbnailData'] != null)
-            GestureDetector(
-              onDoubleTap: () async {
+    final docData = journey.data();
+    if (docData == null) {
+      return const SizedBox.shrink();
+    }
+    final data = docData as Map<String, dynamic>;
+    final isCreator = _auth.currentUser?.uid == data['creatorId'];
+    final journeyId = journey.id;
+    final userId = _auth.currentUser?.uid;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('shadows')
+          .where('userId', isEqualTo: userId)
+          .where('journeyId', isEqualTo: journeyId)
+          .where('status', isEqualTo: 'active')
+          .snapshots(),
+      builder: (context, shadowSnapshot) {
+        final isShadowed =
+            shadowSnapshot.hasData && shadowSnapshot.data!.docs.isNotEmpty;
+        return StreamBuilder<DocumentSnapshot>(
+          stream: _db
+              .collection('journeys')
+              .doc(journeyId)
+              .collection('likes')
+              .doc(userId)
+              .snapshots(),
+          builder: (context, likeSnapshot) {
+            final isLiked = likeSnapshot.hasData &&
+                likeSnapshot.data != null &&
+                likeSnapshot.data!.exists;
+            return JourneyCard(
+              data: data,
+              onTap: null,
+              showEditButton: isCreator,
+              onEdit: isCreator
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateJourneyPage(
+                            journeyId: journeyId,
+                            isEditing: true,
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
+              showLikeButton: true,
+              isLiked: isLiked,
+              onLike: () async {
                 final user = _auth.currentUser;
                 if (user == null) return;
-                final likeRef = _db
-                    .collection('journeys')
-                    .doc(journey.id)
-                    .collection('likes')
-                    .doc(user.uid);
-                final likeDoc = await likeRef.get();
-                if (!likeDoc.exists) {
-                  await likeRef.set({'timestamp': FieldValue.serverTimestamp()});
-                  await _db.collection('journeys').doc(journey.id).update({'likes': FieldValue.increment(1)});
-                  if (mounted) {
-                    _showHeartAnimation(context);
-                  }
+                final journeyRef = _db.collection('journeys').doc(journeyId);
+                final userLikeRef =
+                    journeyRef.collection('likes').doc(user.uid);
+                final likeDoc = await userLikeRef.get();
+                if (likeDoc.exists) {
+                  await userLikeRef.delete();
+                  await journeyRef.update({'likes': FieldValue.increment(-1)});
+                } else {
+                  await userLikeRef
+                      .set({'likedAt': FieldValue.serverTimestamp()});
+                  await journeyRef.update({'likes': FieldValue.increment(1)});
                 }
               },
-              child: ImageHandler.buildImagePreview(
-                context: context,
-                imageData: data['mapThumbnailData'],
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            )
-          else if (data['imageData'] != null)
-            ImageHandler.buildImagePreview(
-              context: context,
-              imageData: data['imageData'],
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            )
-          else
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.map,
-                  size: 64,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-
-          // Journey Details
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['title'] ?? 'Untitled Journey',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (data['description'] != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    data['description'],
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // Journey Stats
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              children: [
-                // Journey Metrics
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Likes and Comments
-                    Row(
-                      children: [
-                        // Like Button
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: _db
-                              .collection('journeys')
-                              .doc(journey.id)
-                              .collection('likes')
-                              .doc(_auth.currentUser?.uid)
-                              .snapshots(),
-                          builder: (context, likeSnapshot) {
-                            final isLiked = likeSnapshot.hasData && likeSnapshot.data!.exists;
-                            return IconButton(
-                              icon: Icon(
-                                isLiked ? Icons.favorite : Icons.favorite_border,
-                                color: isLiked ? Colors.red : Colors.amber,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                final user = _auth.currentUser;
-                                if (user == null) return;
-                                final likeRef = _db
-                                    .collection('journeys')
-                                    .doc(journey.id)
-                                    .collection('likes')
-                                    .doc(user.uid);
-                                if (isLiked) {
-                                  await likeRef.delete();
-                                  await _db.collection('journeys').doc(journey.id).update({'likes': FieldValue.increment(-1)});
-                                } else {
-                                  await likeRef.set({'timestamp': FieldValue.serverTimestamp()});
-                                  await _db.collection('journeys').doc(journey.id).update({'likes': FieldValue.increment(1)});
-                                  _showHeartAnimation(context);
-                                }
-                              },
-                            );
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: isShadowed
+                        ? const Icon(Icons.check_circle,
+                            color: Colors.green, size: 32)
+                        : const Icon(Icons.play_circle_fill,
+                            color: Colors.amber, size: 32),
+                    tooltip:
+                        isShadowed ? 'Already shadowed' : 'Shadow this journey',
+                    onPressed: isShadowed
+                        ? null
+                        : () async {
+                            final user = _auth.currentUser;
+                            if (user == null) return;
+                            await _db.collection('shadows').add({
+                              'userId': user.uid,
+                              'journeyId': journeyId,
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'status': 'active',
+                            });
+                            if (mounted) {
+                              Navigator.pushNamed(context, '/shadowed_journeys');
+                            }
                           },
-                        ),
-                        Text(
-                          '${data['likes'] ?? 0}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
+                  ),
+                  if (isCreator)
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red, size: 28),
+                      tooltip: 'Delete this journey',
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete Journey'),
+                            content: const Text('Are you sure you want to delete this journey? This action cannot be undone.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Shadowers Count
-                        const Icon(Icons.directions_walk,
-                            color: Colors.amber, size: 20),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${data['shadowers'] ?? 0}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                        );
+                        if (confirm == true) {
+                          await _db.collection('journeys').doc(journeyId).delete();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Journey deleted'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Journey Info
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Difficulty
-                    Row(
-                      children: List.generate(
-                        (data['difficulty'] ?? 1).clamp(1, 3),
-                        (index) => const Padding(
-                          padding: EdgeInsets.only(right: 2),
-                          child: Icon(
-                            Icons.local_fire_department,
-                            color: Colors.amber,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Cost Level
-                    Row(
-                      children: List.generate(
-                        (data['cost'] ?? 1).clamp(1, 3),
-                        (index) => const Padding(
-                          padding: EdgeInsets.only(right: 2),
-                          child: Icon(
-                            Icons.attach_money,
-                            color: Colors.amber,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Duration
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time,
-                            color: Colors.amber, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDuration(data['durationInHours'] ?? 0),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // People
-                    Row(
-                      children: [
-                        const Icon(Icons.people,
-                            color: Colors.amber, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${data['recommendedPeople'] ?? 1}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -901,4 +812,4 @@ class _ProfilePageState extends State<ProfilePage> {
       return '$h h $m min';
     }
   }
-} 
+}

@@ -25,22 +25,23 @@ class CacheService {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '${_cachePrefix}user_$userId';
     final cachedString = prefs.getString(cacheKey);
-    
+
     if (cachedString == null) return null;
-    
+
     final cacheData = jsonDecode(cachedString) as Map<String, dynamic>;
     final timestamp = DateTime.parse(cacheData['timestamp']);
-    
+
     if (DateTime.now().difference(timestamp) > _cacheDuration) {
       await prefs.remove(cacheKey);
       return null;
     }
-    
+
     return cacheData['data'] as Map<String, dynamic>;
   }
 
   // Cache journey data
-  Future<void> cacheJourneyData(String journeyId, Map<String, dynamic> data) async {
+  Future<void> cacheJourneyData(
+      String journeyId, Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '${_cachePrefix}journey_$journeyId';
     final cacheData = {
@@ -55,22 +56,23 @@ class CacheService {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '${_cachePrefix}journey_$journeyId';
     final cachedString = prefs.getString(cacheKey);
-    
+
     if (cachedString == null) return null;
-    
+
     final cacheData = jsonDecode(cachedString) as Map<String, dynamic>;
     final timestamp = DateTime.parse(cacheData['timestamp']);
-    
+
     if (DateTime.now().difference(timestamp) > _cacheDuration) {
       await prefs.remove(cacheKey);
       return null;
     }
-    
+
     return cacheData['data'] as Map<String, dynamic>;
   }
 
   // Cache journey stops
-  Future<void> cacheJourneyStops(String journeyId, List<Map<String, dynamic>> stops) async {
+  Future<void> cacheJourneyStops(
+      String journeyId, List<Map<String, dynamic>> stops) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '${_cachePrefix}stops_$journeyId';
     final cacheData = {
@@ -81,21 +83,22 @@ class CacheService {
   }
 
   // Get cached journey stops
-  Future<List<Map<String, dynamic>>?> getCachedJourneyStops(String journeyId) async {
+  Future<List<Map<String, dynamic>>?> getCachedJourneyStops(
+      String journeyId) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '${_cachePrefix}stops_$journeyId';
     final cachedString = prefs.getString(cacheKey);
-    
+
     if (cachedString == null) return null;
-    
+
     final cacheData = jsonDecode(cachedString) as Map<String, dynamic>;
     final timestamp = DateTime.parse(cacheData['timestamp']);
-    
+
     if (DateTime.now().difference(timestamp) > _cacheDuration) {
       await prefs.remove(cacheKey);
       return null;
     }
-    
+
     return List<Map<String, dynamic>>.from(cacheData['data']);
   }
 
@@ -145,14 +148,14 @@ class CacheService {
       if (!doc.exists) return null;
 
       final data = doc.data()!;
-      
+
       // Cache the data
       await cacheJourneyData(docId, data);
-      
+
       return data;
     } catch (e) {
       print('Error getting data with offline support: $e');
       return null;
     }
   }
-} 
+}

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +12,7 @@ class MapThumbnailService {
   static const Duration _cacheDuration = Duration(days: 7);
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
-  
+
   // Rate limiting
   static final _requestTimes = <String, DateTime>{};
   static const _minRequestInterval = Duration(milliseconds: 200);
@@ -29,25 +28,27 @@ class MapThumbnailService {
     }
   }
 
-  static Future<Map<String, dynamic>?> getCachedThumbnail(String journeyId) async {
+  static Future<Map<String, dynamic>?> getCachedThumbnail(
+      String journeyId) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '$_cachePrefix$journeyId';
     final cachedString = prefs.getString(cacheKey);
-    
+
     if (cachedString == null) return null;
-    
+
     final cacheData = jsonDecode(cachedString) as Map<String, dynamic>;
     final timestamp = DateTime.parse(cacheData['timestamp']);
-    
+
     if (DateTime.now().difference(timestamp) > _cacheDuration) {
       await prefs.remove(cacheKey);
       return null;
     }
-    
+
     return cacheData;
   }
 
-  static Future<void> cacheThumbnail(String journeyId, Map<String, dynamic> thumbnailData) async {
+  static Future<void> cacheThumbnail(
+      String journeyId, Map<String, dynamic> thumbnailData) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '$_cachePrefix$journeyId';
     final cacheData = {
@@ -61,7 +62,7 @@ class MapThumbnailService {
   static bool _canMakeRequest(String key) {
     final lastRequest = _requestTimes[key];
     if (lastRequest == null) return true;
-    
+
     final timeSinceLastRequest = DateTime.now().difference(lastRequest);
     return timeSinceLastRequest >= _minRequestInterval;
   }
@@ -97,7 +98,8 @@ class MapThumbnailService {
       return 'markers=color:amber%7C${stop.latitude},${stop.longitude}';
     }).join('&');
 
-    final path = route.map((point) => '${point.latitude},${point.longitude}').join('|');
+    final path =
+        route.map((point) => '${point.latitude},${point.longitude}').join('|');
 
     // Construct URL
     final staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap'
@@ -153,7 +155,8 @@ class MapThumbnailService {
         } else if (response.statusCode == 403) {
           throw Exception('API key error: ${response.body}');
         } else {
-          throw Exception('Failed to download static map: ${response.statusCode}');
+          throw Exception(
+              'Failed to download static map: ${response.statusCode}');
         }
       } catch (e) {
         print('Error generating thumbnail (attempt $attempt): $e');
@@ -176,19 +179,160 @@ class MapThumbnailService {
     try {
       // Create a simple colored background
       final image = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x03, 0x20, 0x00, 0x00, 0x01, 0x90,
-        0x08, 0x06, 0x00, 0x00, 0x00, 0x4B, 0x0D, 0x24, 0x80, 0x00, 0x00, 0x00,
-        0x01, 0x73, 0x52, 0x47, 0x42, 0x00, 0xAE, 0xCE, 0x1C, 0xE9, 0x00, 0x00,
-        0x00, 0x04, 0x67, 0x41, 0x4D, 0x41, 0x00, 0x00, 0xB1, 0x8F, 0x0B, 0xFC,
-        0x61, 0x05, 0x00, 0x00, 0x00, 0x09, 0x70, 0x48, 0x59, 0x73, 0x00, 0x00,
-        0x0E, 0xC3, 0x00, 0x00, 0x0E, 0xC3, 0x01, 0xC7, 0x6F, 0xA8, 0x64, 0x00,
-        0x00, 0x00, 0x19, 0x74, 0x45, 0x58, 0x74, 0x53, 0x6F, 0x66, 0x74, 0x77,
-        0x61, 0x72, 0x65, 0x00, 0x41, 0x64, 0x6F, 0x62, 0x65, 0x20, 0x49, 0x6D,
-        0x61, 0x67, 0x65, 0x52, 0x65, 0x61, 0x64, 0x79, 0x71, 0xC9, 0x65, 0x3C,
-        0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00,
-        0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00,
-        0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+        0x00,
+        0x00,
+        0x00,
+        0x0D,
+        0x49,
+        0x48,
+        0x44,
+        0x52,
+        0x00,
+        0x00,
+        0x03,
+        0x20,
+        0x00,
+        0x00,
+        0x01,
+        0x90,
+        0x08,
+        0x06,
+        0x00,
+        0x00,
+        0x00,
+        0x4B,
+        0x0D,
+        0x24,
+        0x80,
+        0x00,
+        0x00,
+        0x00,
+        0x01,
+        0x73,
+        0x52,
+        0x47,
+        0x42,
+        0x00,
+        0xAE,
+        0xCE,
+        0x1C,
+        0xE9,
+        0x00,
+        0x00,
+        0x00,
+        0x04,
+        0x67,
+        0x41,
+        0x4D,
+        0x41,
+        0x00,
+        0x00,
+        0xB1,
+        0x8F,
+        0x0B,
+        0xFC,
+        0x61,
+        0x05,
+        0x00,
+        0x00,
+        0x00,
+        0x09,
+        0x70,
+        0x48,
+        0x59,
+        0x73,
+        0x00,
+        0x00,
+        0x0E,
+        0xC3,
+        0x00,
+        0x00,
+        0x0E,
+        0xC3,
+        0x01,
+        0xC7,
+        0x6F,
+        0xA8,
+        0x64,
+        0x00,
+        0x00,
+        0x00,
+        0x19,
+        0x74,
+        0x45,
+        0x58,
+        0x74,
+        0x53,
+        0x6F,
+        0x66,
+        0x74,
+        0x77,
+        0x61,
+        0x72,
+        0x65,
+        0x00,
+        0x41,
+        0x64,
+        0x6F,
+        0x62,
+        0x65,
+        0x20,
+        0x49,
+        0x6D,
+        0x61,
+        0x67,
+        0x65,
+        0x52,
+        0x65,
+        0x61,
+        0x64,
+        0x79,
+        0x71,
+        0xC9,
+        0x65,
+        0x3C,
+        0x00,
+        0x00,
+        0x00,
+        0x0A,
+        0x49,
+        0x44,
+        0x41,
+        0x54,
+        0x78,
+        0x9C,
+        0x63,
+        0x00,
+        0x01,
+        0x00,
+        0x00,
+        0x05,
+        0x00,
+        0x01,
+        0x0D,
+        0x0A,
+        0x2D,
+        0xB4,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x49,
+        0x45,
+        0x4E,
+        0x44,
+        0xAE,
+        0x42,
+        0x60,
+        0x82
       ]);
 
       final thumbnailData = {
@@ -211,4 +355,4 @@ class MapThumbnailService {
       return null;
     }
   }
-} 
+}

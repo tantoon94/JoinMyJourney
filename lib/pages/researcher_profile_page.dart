@@ -38,29 +38,30 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
     if (user != null) {
       // Get user data
       final userData = await _db.collection('users').doc(user.uid).get();
-      
+
       // Get mission count
       final missionSnapshot = await _db
           .collection('missions')
           .where('researcherId', isEqualTo: user.uid)
           .get();
-      
+
       // Get total participants
       final participantsSnapshot = await _db
           .collection('mission_participants')
           .where('researcherId', isEqualTo: user.uid)
           .get();
-      
+
       // Get completed missions
       final completedSnapshot = await _db
           .collection('missions')
           .where('researcherId', isEqualTo: user.uid)
           .where('status', isEqualTo: 'completed')
           .get();
-      
+
       if (userData.exists) {
         setState(() {
-          _username = userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
+          _username =
+              userData.data()?['displayName'] ?? user.displayName ?? '[Name]';
           _bio = userData.data()?['bio'];
           _missionCount = missionSnapshot.docs.length;
           _totalParticipants = participantsSnapshot.docs.length;
@@ -105,14 +106,15 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: IconButton(
-                      icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                      icon:
+                          const Icon(Icons.menu, color: Colors.white, size: 28),
                       onPressed: () {
                         // TODO: Implement menu options
                       },
                     ),
                   ),
                 ),
-                
+
                 // Profile Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -133,9 +135,11 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                                 children: [
                                   CircleAvatar(
                                     radius: 50,
-                                    backgroundImage: _auth.currentUser?.photoURL != null
-                                        ? NetworkImage(_auth.currentUser!.photoURL!)
-                                        : null,
+                                    backgroundImage:
+                                        _auth.currentUser?.photoURL != null
+                                            ? NetworkImage(
+                                                _auth.currentUser!.photoURL!)
+                                            : null,
                                     child: _auth.currentUser?.photoURL == null
                                         ? const Icon(Icons.person, size: 50)
                                         : null,
@@ -162,7 +166,7 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                               ),
                             ),
                           ),
-                          
+
                           // Pie Chart and Stats Column
                           Expanded(
                             child: Padding(
@@ -271,7 +275,7 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                           ),
                         ],
                       ),
-                      
+
                       // Bio Section
                       const SizedBox(height: 24),
                       Container(
@@ -279,7 +283,8 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                           color: const Color(0xFF2A2A2A),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         child: Text(
                           _bio ?? 'Add a bio...',
                           style: TextStyle(
@@ -324,12 +329,14 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.add, size: 30, color: Colors.white),
+                            icon: const Icon(Icons.add,
+                                size: 30, color: Colors.white),
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const MissionCreationPage(),
+                                  builder: (context) =>
+                                      const MissionCreationPage(),
                                 ),
                               );
                             },
@@ -340,7 +347,8 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                       StreamBuilder<QuerySnapshot>(
                         stream: _db
                             .collection('missions')
-                            .where('researcherId', isEqualTo: _auth.currentUser?.uid)
+                            .where('researcherId',
+                                isEqualTo: _auth.currentUser?.uid)
                             .orderBy('createdAt', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
@@ -353,11 +361,14 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                             );
                           }
 
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
                           }
 
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
                             return const Center(
                               child: Text(
                                 'No missions created yet',
@@ -495,7 +506,8 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                         ),
                         const SizedBox(width: 16),
                         // Deadline
-                        const Icon(Icons.access_time, color: Colors.amber, size: 20),
+                        const Icon(Icons.access_time,
+                            color: Colors.amber, size: 20),
                         const SizedBox(width: 4),
                         Text(
                           _formatDate(data['deadline']),
@@ -508,7 +520,8 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
                     ),
                     // Status
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _getStatusColor(data['status']),
                         borderRadius: BorderRadius.circular(12),
@@ -565,4 +578,4 @@ class _ResearcherProfilePageState extends State<ResearcherProfilePage> {
     }
     return 'No deadline';
   }
-} 
+}

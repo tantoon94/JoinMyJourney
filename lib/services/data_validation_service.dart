@@ -9,7 +9,8 @@ class DataValidationService {
     if (data['email'] == null || data['email'].toString().isEmpty) {
       return 'Email is required';
     }
-    if (data['userType'] == null || !['regular', 'researcher'].contains(data['userType'])) {
+    if (data['userType'] == null ||
+        !['regular', 'researcher'].contains(data['userType'])) {
       return 'Invalid user type';
     }
     return null;
@@ -28,7 +29,8 @@ class DataValidationService {
     if (data['category'] == null || data['category'].toString().isEmpty) {
       return 'Category is required';
     }
-    if (data['difficulty'] != null && (data['difficulty'] < 1 || data['difficulty'] > 5)) {
+    if (data['difficulty'] != null &&
+        (data['difficulty'] < 1 || data['difficulty'] > 5)) {
       return 'Difficulty must be between 1 and 5';
     }
     if (data['cost'] != null && (data['cost'] < 1 || data['cost'] > 5)) {
@@ -123,4 +125,4 @@ class DataValidationService {
       'imageUrl': data['imageUrl']?.toString(),
     };
   }
-} 
+}

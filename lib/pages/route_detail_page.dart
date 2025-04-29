@@ -26,6 +26,44 @@ class _RouteDetailPageState extends State<RouteDetailPage> {
   Set<Polyline> _polylines = {};
   List<LatLng> _route = [];
   List<Stop> _stops = [];
+  late Future<Map<String, dynamic>> _futureJourneyData;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureJourneyData = _loadJourneyData();
+  }
+
+  Future<Map<String, dynamic>> _loadJourneyData() async {
+    final journeyDoc =
+        await _db.collection('journeys').doc(widget.journeyId).get();
+    if (!journeyDoc.exists) throw Exception('Journey not found');
+    final journeyData = journeyDoc.data()!;
+    // Get route points from subcollection
+    final routeDoc =
+        await journeyDoc.reference.collection('route').doc('points').get();
+    List<LatLng> route = [];
+    if (routeDoc.exists) {
+      final routeData = routeDoc.data()!;
+      route = (routeData['points'] as List<dynamic>? ?? [])
+          .where((point) => point['lat'] != null && point['lng'] != null)
+          .map((point) => LatLng(
+                (point['lat'] as num).toDouble(),
+                (point['lng'] as num).toDouble(),
+              ))
+          .toList();
+    }
+    // Get stops from subcollection
+    final stopsSnapshot =
+        await journeyDoc.reference.collection('stops').orderBy('order').get();
+    final stops =
+        stopsSnapshot.docs.map((doc) => Stop.fromMap(doc.data())).toList();
+    return {
+      'data': journeyData,
+      'route': route,
+      'stops': stops,
+    };
+  }
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
@@ -96,133 +134,104 @@ Join me on this adventure!
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: _db.collection('journeys')
-          .doc(widget.journeyId)
-          .snapshots(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _futureJourneyData,
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
         if (snapshot.hasError) {
           return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text('Error: ${snapshot.error}')),
-          );
+              appBar: AppBar(),
+              body: const Center(child: Text('Error:  ̦snapshot.error')));
         }
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final journey = snapshot.data!;
-        final data = journey.data() as Map<String, dynamic>;
-        
-        return StreamBuilder<DocumentSnapshot>(
-          stream: _db.collection('journeys')
-              .doc(widget.journeyId)
-              .collection('route')
-              .doc('points')
-              .snapshots(),
-          builder: (context, routeSnapshot) {
-            if (routeSnapshot.hasData) {
-              final routeData = routeSnapshot.data!.data() as Map<String, dynamic>;
-              _route = (routeData['points'] as List<dynamic>? ?? [])
-                  .map((point) => LatLng(point['lat'], point['lng']))
-                  .toList();
-            }
-
-            return StreamBuilder<QuerySnapshot>(
-              stream: _db.collection('journeys')
-                  .doc(widget.journeyId)
-                  .collection('stops')
-                  .orderBy('order')
-                  .snapshots(),
-              builder: (context, stopsSnapshot) {
-                if (stopsSnapshot.hasData) {
-                  _stops = stopsSnapshot.data!.docs
-                      .map((doc) => Stop.fromMap(doc.data() as Map<String, dynamic>))
-                      .toList();
-                }
-
-                _updateMarkersAndPolylines();
-                return Scaffold(
-                  appBar: AppBar(
-                    title: Text(data['title'] ?? 'Route Detail'),
-                    actions: [
-                      IconButton(
+        final data = snapshot.data!['data'] as Map<String, dynamic>;
+        final route = snapshot.data!['route'] as List<LatLng>;
+        final stops = snapshot.data!['stops'] as List<Stop>;
+        _route = route;
+        _stops = stops;
+        _updateMarkersAndPolylines();
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(data['title'] ?? 'Route Detail'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: () => _shareJourney(data),
+              ),
+            ],
+          ),
+          body: Column(
+            children: [
+              SizedBox(
+                height: 300,
+                child: GoogleMap(
+                  onMapCreated: _onMapCreated,
+                  initialCameraPosition: _route.isNotEmpty
+                      ? CameraPosition(target: _route[0], zoom: 13)
+                      : const CameraPosition(
+                          target: LatLng(51.5074, -0.1278), zoom: 13),
+                  markers: _markers,
+                  polylines: _polylines,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _stops.length,
+                  itemBuilder: (context, index) {
+                    final stop = _stops[index];
+                    return Card(
+                      color: Colors.grey[900],
+                      child: ListTile(
+                        leading: stop.imageData != null
+                            ? ImageHandler.buildImagePreview(
+                                context: context,
+                                imageData: stop.imageData,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(Icons.place, color: Colors.amber),
+                        title: Text(stop.name,
+                            style: const TextStyle(color: Colors.white)),
+                        subtitle: Text(stop.description,
+                            style: const TextStyle(color: Colors.grey)),
+                        trailing: Text('#${stop.order}',
+                            style: const TextStyle(color: Colors.amber)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.directions),
+                        label: const Text('Get Directions'),
+                        onPressed: () {
+                          // TODO: Implement directions functionality
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
                         icon: const Icon(Icons.share),
+                        label: const Text('Share'),
                         onPressed: () => _shareJourney(data),
                       ),
-                    ],
-                  ),
-                  body: Column(
-                    children: [
-                      SizedBox(
-                        height: 300,
-                        child: GoogleMap(
-                          onMapCreated: _onMapCreated,
-                          initialCameraPosition: _route.isNotEmpty
-                              ? CameraPosition(target: _route[0], zoom: 13)
-                              : const CameraPosition(target: LatLng(51.5074, -0.1278), zoom: 13),
-                          markers: _markers,
-                          polylines: _polylines,
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _stops.length,
-                          itemBuilder: (context, index) {
-                            final stop = _stops[index];
-                            return Card(
-                              color: Colors.grey[900],
-                              child: ListTile(
-                                leading: stop.imageData != null
-                                    ? ImageHandler.buildImagePreview(
-                                        context: context,
-                                        imageData: stop.imageData,
-                                        width: 40,
-                                        height: 40,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : const Icon(Icons.place, color: Colors.amber),
-                                title: Text(stop.name, style: const TextStyle(color: Colors.white)),
-                                subtitle: Text(stop.description, style: const TextStyle(color: Colors.grey)),
-                                trailing: Text('#${stop.order}', style: const TextStyle(color: Colors.amber)),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.directions),
-                                label: const Text('Get Directions'),
-                                onPressed: () {
-                                  // TODO: Implement directions functionality
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.share),
-                                label: const Text('Share'),
-                                onPressed: () => _shareJourney(data),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -233,4 +242,4 @@ Join me on this adventure!
     _mapController?.dispose();
     super.dispose();
   }
-} 
+}

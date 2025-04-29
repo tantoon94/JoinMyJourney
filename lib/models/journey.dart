@@ -76,11 +76,15 @@ class Journey {
       shadowers: data['shadowers'] ?? 0,
       totalStops: data['totalStops'] ?? 0,
       mapThumbnailData: data['mapThumbnailData'],
-      route: (data['route'] as List<dynamic>? ?? []).map((point) => LatLng(
-        point['lat'] as double,
-        point['lng'] as double,
-      )).toList(),
-      stops: (data['stops'] as List<dynamic>? ?? []).map((stop) => Stop.fromMap(stop as Map<String, dynamic>)).toList(),
+      route: (data['route'] as List<dynamic>? ?? [])
+          .map((point) => LatLng(
+                point['lat'] as double,
+                point['lng'] as double,
+              ))
+          .toList(),
+      stops: (data['stops'] as List<dynamic>? ?? [])
+          .map((stop) => Stop.fromMap(stop as Map<String, dynamic>))
+          .toList(),
       status: data['status'] ?? 'active',
       visibility: data['visibility'] ?? 'public',
       lastModifiedBy: data['lastModifiedBy'] ?? '',
@@ -107,10 +111,12 @@ class Journey {
       'shadowers': shadowers,
       'totalStops': totalStops,
       'mapThumbnailData': mapThumbnailData,
-      'route': route.map((point) => {
-        'lat': point.latitude,
-        'lng': point.longitude,
-      }).toList(),
+      'route': route
+          .map((point) => {
+                'latitude': point.latitude,
+                'longitude': point.longitude,
+              })
+          .toList(),
       'stops': stops.map((stop) => stop.toMap()).toList(),
       'status': status,
       'visibility': visibility,
@@ -202,14 +208,21 @@ class Stop {
   });
 
   factory Stop.fromMap(Map<String, dynamic> map) {
+    double lat = 0.0;
+    double lng = 0.0;
+    try {
+      final loc = map['location'] ?? {};
+      lat = (loc['latitude'] as num?)?.toDouble() ?? 0.0;
+      lng = (loc['longitude'] as num?)?.toDouble() ?? 0.0;
+    } catch (e) {
+      print(
+          'Warning: Stop.fromMap could not parse latitude/longitude from: \\${map['location']}. Error: \\$e');
+    }
     return Stop(
       id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       name: map['name'] ?? '',
       description: map['description'] ?? '',
-      location: LatLng(
-        map['location']['latitude'] as double,
-        map['location']['longitude'] as double,
-      ),
+      location: LatLng(lat, lng),
       order: map['order'] ?? 0,
       notes: map['notes'],
       imageData: map['imageData'],
@@ -275,4 +288,4 @@ class JourneyNote {
       'imagePath': imagePath,
     };
   }
-} 
+}

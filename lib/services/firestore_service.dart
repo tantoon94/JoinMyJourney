@@ -15,7 +15,7 @@ class FirestoreService {
   Future<Map<String, dynamic>?> verifyJourneyData(String journeyId) async {
     try {
       developer.log('Verifying journey data for ID: $journeyId');
-      
+
       // Get the main journey document
       final journeyDoc = await _db.collection('journeys').doc(journeyId).get();
       if (!journeyDoc.exists) {
@@ -27,7 +27,7 @@ class FirestoreService {
       developer.log('Journey data loaded: ${journeyData.keys.join(', ')}');
       developer.log('Title: ${journeyData['title']}');
       developer.log('Description: ${journeyData['description']}');
-      
+
       // Check map thumbnail
       if (journeyData['mapThumbnailData'] != null) {
         final thumbnailData = journeyData['mapThumbnailData'];
@@ -40,9 +40,10 @@ class FirestoreService {
       }
 
       // Get stops
-      final stopsSnapshot = await journeyDoc.reference.collection('stops').orderBy('order').get();
+      final stopsSnapshot =
+          await journeyDoc.reference.collection('stops').orderBy('order').get();
       developer.log('Found ${stopsSnapshot.docs.length} stops');
-      
+
       for (var stopDoc in stopsSnapshot.docs) {
         final stopData = stopDoc.data();
         developer.log('Stop ${stopData['order']}: ${stopData['name']}');
@@ -52,7 +53,8 @@ class FirestoreService {
       }
 
       // Get route points
-      final routeDoc = await journeyDoc.reference.collection('route').doc('points').get();
+      final routeDoc =
+          await journeyDoc.reference.collection('route').doc('points').get();
       if (routeDoc.exists) {
         final routeData = routeDoc.data()!;
         final points = routeData['points'] as List<dynamic>;

@@ -38,4 +38,4 @@ class DatabaseSchema {
   static const String imageTimestamp = 'timestamp';
   static const String imageName = 'name';
   static const String imageUrl = 'url';
-} 
+}

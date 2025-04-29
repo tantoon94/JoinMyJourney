@@ -78,4 +78,4 @@ class Mission {
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
-} 
+}

@@ -14,4 +14,4 @@ class ResearcherPage extends StatelessWidget {
       ),
     );
   }
-} 
+}

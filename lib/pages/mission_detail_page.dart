@@ -54,20 +54,25 @@ class _MissionDetailPageState extends State<MissionDetailPage> {
 
     try {
       // Check if mission is still accepting participants
-      final missionDoc = await _db.collection('missions').doc(widget.missionId).get();
+      final missionDoc =
+          await _db.collection('missions').doc(widget.missionId).get();
       final mission = Mission.fromFirestore(missionDoc);
 
       if (mission.currentEntries >= mission.entryLimit) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mission has reached its participant limit')),
+            const SnackBar(
+                content: Text('Mission has reached its participant limit')),
           );
         }
         return;
       }
 
       // Add participant
-      await _db.collection('mission_participants').doc('${widget.missionId}_${user.uid}').set({
+      await _db
+          .collection('mission_participants')
+          .doc('${widget.missionId}_${user.uid}')
+          .set({
         'missionId': widget.missionId,
         'userId': user.uid,
         'userName': user.displayName ?? 'Anonymous',
@@ -165,8 +170,13 @@ Join me in contributing to this research!
           );
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final locations = List<Map<String, dynamic>>.from(data['locations'] ?? []);
+        final docData = snapshot.data?.data();
+        if (docData == null) {
+          return const Center(child: Text('Mission data not found'));
+        }
+        final data = docData as Map<String, dynamic>;
+        final locations =
+            List<Map<String, dynamic>>.from(data['locations'] ?? []);
         _updateMarkers(locations);
 
         return Scaffold(
@@ -313,9 +323,8 @@ Join me in contributing to this research!
           bottomNavigationBar: Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton(
-              onPressed: _isParticipating || _isLoading
-                  ? null
-                  : _participateInMission,
+              onPressed:
+                  _isParticipating || _isLoading ? null : _participateInMission,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -370,4 +379,4 @@ Join me in contributing to this research!
     _mapController?.dispose();
     super.dispose();
   }
-} 
+}

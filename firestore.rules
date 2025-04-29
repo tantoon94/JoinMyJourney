@@ -11,40 +11,55 @@ service cloud.firestore {
     }
     
     function isValidUserData() {
-      return request.resource.data.keys().hasAll(['displayName', 'email', 'userType', 'lastUpdated']) &&
+      let requiredFields = ['displayName', 'email', 'userType', 'username', 'lastUpdated', 'status'];
+      let validTypes = ['Researcher', 'Regular Member'];
+      
+      return request.resource.data.keys().hasAll(requiredFields) &&
              request.resource.data.displayName is string &&
              request.resource.data.email is string &&
-             request.resource.data.userType in ['regular', 'researcher'];
+             request.resource.data.username is string &&
+             request.resource.data.userType in validTypes &&
+             request.resource.data.status in ['active', 'inactive', 'suspended'];
     }
     
-    function isValidJourneyData() {
-      return request.resource.data.keys().hasAll(['title', 'description', 'creatorId', 'category', 'createdAt']) &&
-             request.resource.data.title is string &&
-             request.resource.data.description is string &&
-             request.resource.data.creatorId is string &&
-             request.resource.data.category is string;
+    function isValidResearcherProfile() {
+      return request.resource.data.researcherProfile.keys().hasAll(['institution', 'researchAreas', 'missionStats']) &&
+             request.resource.data.researcherProfile.institution is string &&
+             request.resource.data.researcherProfile.researchAreas is list;
     }
     
-    function isValidStopData() {
-      return request.resource.data.keys().hasAll(['name', 'description', 'location', 'order', 'journeyId']) &&
-             request.resource.data.name is string &&
-             request.resource.data.description is string &&
-             request.resource.data.location is map &&
-             request.resource.data.order is number &&
-             request.resource.data.journeyId is string;
+    function isResearcher(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'Researcher';
     }
 
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(userId) && isValidUserData();
-      allow update: if isAuthenticated() && isOwner(userId);
-      allow delete: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && 
+                   isOwner(userId) && 
+                   isValidUserData() &&
+                   (!request.resource.data.userType == 'Researcher' || isValidResearcherProfile());
+      allow update: if isAuthenticated() && 
+                   isOwner(userId) &&
+                   (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasAny(['displayName', 'bio', 'photoURL', 'preferences', 'interests']));
+      allow delete: if false; // Prevent user deletion, only allow deactivation
+      
+      // User's private data subcollection
+      match /private/{document=**} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
       
       // User's journeys subcollection
       match /journeys/{journeyId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // User's missions subcollection (for researchers)
+      match /missions/{missionId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId) && isResearcher(userId);
       }
     }
 

@@ -22,11 +22,11 @@ class _MissionCreationPageState extends State<MissionCreationPage> {
   final _purposeController = TextEditingController();
   final _tagsController = TextEditingController();
   final _entryLimitController = TextEditingController();
-  
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final StorageService _storageService = StorageService();
-  
+
   DateTime _deadline = DateTime.now().add(const Duration(days: 30));
   final List<Map<String, dynamic>> _locations = [];
   String? _gdprFileUrl;
@@ -52,7 +52,7 @@ class _MissionCreationPageState extends State<MissionCreationPage> {
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
-      
+
       if (result != null) {
         setState(() => _isLoading = true);
         final file = result.files.first;
@@ -263,7 +263,8 @@ class _MissionCreationPageState extends State<MissionCreationPage> {
                           context: context,
                           initialDate: _deadline,
                           firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 365)),
                         );
                         if (date != null) {
                           setState(() => _deadline = date);
@@ -310,4 +311,4 @@ class _MissionCreationPageState extends State<MissionCreationPage> {
             ),
     );
   }
-} 
+}

@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -15,7 +13,6 @@ import '../services/stop_service.dart';
 import 'package:location/location.dart' as location;
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:http/http.dart' as http;
-import '../main.dart';
 
 class JourneyTrackingPage extends StatefulWidget {
   final String? journeyId;
@@ -37,21 +34,21 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  
+
   // Services
   final _db = FirebaseFirestore.instance;
   final _storage = FirebaseStorage.instance;
   final _auth = FirebaseAuth.instance;
   final _stopService = StopService();
   final _location = location.Location();
-  
+
   // Map related
   GoogleMapController? _mapController;
   LatLng _mapCenter = const LatLng(51.5074, -0.1278); // Default to London
   List<LatLng> _route = [];
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-  
+
   // Journey data
   List<journey.Stop> _stops = [];
   String _selectedCategory = 'Adventures';
@@ -59,7 +56,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
   int _cost = 1;
   int _recommendedPeople = 2;
   double _durationInHours = 1.0;
-  
+
   // UI state
   bool _isSaving = false;
   bool _isTracking = false;
@@ -72,10 +69,10 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
   Duration _trackingDuration = Duration.zero;
   Timer? _trackingTimer;
   double _totalDistance = 0.0;
-  
+
   // Categories
   final List<String> _categories = ['Missions', 'Adventures', 'Chill'];
-  
+
   // Stop management
   final _stopTitleController = TextEditingController();
   final _stopDescriptionController = TextEditingController();
@@ -155,7 +152,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         final locationData = await _location.getLocation();
         if (mounted) {
           setState(() {
-            _mapCenter = LatLng(locationData.latitude!, locationData.longitude!);
+            _mapCenter =
+                LatLng(locationData.latitude!, locationData.longitude!);
           });
         }
       }
@@ -173,7 +171,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
     try {
       print('Loading journey data...');
       setState(() => _isLoading = true);
-      
+
       final doc = await _db.collection('journeys').doc(widget.journeyId).get();
       if (!doc.exists) {
         print('Journey document does not exist');
@@ -182,7 +180,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
 
       final data = doc.data()!;
       print('Journey data loaded: ${data.keys.join(', ')}');
-      
+
       setState(() {
         _titleController.text = data['title'] ?? '';
         _descriptionController.text = data['description'] ?? '';
@@ -192,7 +190,6 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         _cost = data['cost'] ?? 1;
         _recommendedPeople = data['recommendedPeople'] ?? 2;
         _durationInHours = (data['durationInHours'] ?? 1.0).clamp(0.5, 24.0);
-        
         // Store original values for comparison
         _originalTitle = data['title'];
         _originalDescription = data['description'];
@@ -207,26 +204,33 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
 
       // Load route points from subcollection
       print('Loading route points...');
-      final routeDoc = await doc.reference.collection('route').doc('points').get();
+      final routeDoc =
+          await doc.reference.collection('route').doc('points').get();
       if (routeDoc.exists) {
         final routeData = routeDoc.data()!;
-        final points = (routeData['points'] as List<dynamic>).map((point) => LatLng(
-          point['lat'] as double,
-          point['lng'] as double,
-        )).toList();
+        final points = (routeData['points'] as List<dynamic>)
+            .map((point) => LatLng(
+                  (point['latitude'] as num).toDouble(),
+                  (point['longitude'] as num).toDouble(),
+                ))
+            .toList();
         print('Loaded ${points.length} route points');
         setState(() => _route = points);
       }
 
       // Load stops from subcollection
-      print('Loading stops...');
-      final stopsSnapshot = await doc.reference.collection('stops')
-          .orderBy('order')
-          .get();
-      
-      print('Loaded ${stopsSnapshot.docs.length} stops');
+      print('Loading stops from subcollection...');
+      final stopsSnapshot =
+          await doc.reference.collection('stops').orderBy('order').get();
+      print('Found ${stopsSnapshot.docs.length} stops in subcollection');
+      for (var stopDoc in stopsSnapshot.docs) {
+        print('Stop: ${stopDoc.data()}');
+      }
+
       setState(() {
-        _stops = stopsSnapshot.docs.map((doc) => journey.Stop.fromMap(doc.data())).toList();
+        _stops = stopsSnapshot.docs
+            .map((doc) => journey.Stop.fromMap(doc.data()))
+            .toList();
         _updateMapFeatures();
       });
     } catch (e) {
@@ -258,16 +262,19 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         _trackingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
           if (mounted) {
             setState(() {
-              _trackingDuration = DateTime.now().difference(_trackingStartTime!);
+              _trackingDuration =
+                  DateTime.now().difference(_trackingStartTime!);
             });
           }
         });
 
         // Start location tracking
         _locationStreamSubscription?.cancel();
-        _locationStreamSubscription = _location.onLocationChanged.listen((locationData) {
+        _locationStreamSubscription =
+            _location.onLocationChanged.listen((locationData) {
           if (_isTracking) {
-            final newPoint = LatLng(locationData.latitude!, locationData.longitude!);
+            final newPoint =
+                LatLng(locationData.latitude!, locationData.longitude!);
             setState(() {
               _route.add(newPoint);
               if (_route.length > 1) {
@@ -297,10 +304,10 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
     setState(() {
       _isTracking = false;
     });
-    
-      _trackingTimer?.cancel();
-      _locationStreamSubscription?.cancel();
-    
+
+    _trackingTimer?.cancel();
+    _locationStreamSubscription?.cancel();
+
     // Wait for any pending operations to complete
     await Future.delayed(const Duration(milliseconds: 100));
   }
@@ -325,8 +332,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (stop.imageData != null)
-                      _buildStopImage(stop.imageData),
+                    if (stop.imageData != null) _buildStopImage(stop.imageData),
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -404,8 +410,9 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
   }
 
   Widget _buildStopImage(Map<String, dynamic>? imageData) {
-    if (imageData == null || imageData['data'] == null) return const SizedBox.shrink();
-    
+    if (imageData == null || imageData['data'] == null)
+      return const SizedBox.shrink();
+
     try {
       return ClipRRect(
         borderRadius: const BorderRadius.vertical(
@@ -479,9 +486,11 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                   ElevatedButton.icon(
                     onPressed: () async {
                       try {
-                        final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+                        final image = await ImagePicker()
+                            .pickImage(source: ImageSource.gallery);
                         if (image != null) {
-                          final imageData = await ImageHandler.getImageData(image);
+                          final imageData =
+                              await ImageHandler.getImageData(image);
                           if (imageData != null) {
                             setState(() => _stopImage = imageData);
                           }
@@ -545,7 +554,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
           status: 'active',
           version: 1,
         );
-        
+
         setState(() {
           _stops.add(newStop);
           _updateMapFeatures();
@@ -568,7 +577,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       }
       final stop = _stops.removeAt(oldIndex);
       _stops.insert(newIndex, stop);
-      
+
       // Update order numbers
       final now = DateTime.now();
       for (var i = 0; i < _stops.length; i++) {
@@ -586,7 +595,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
           version: _stops[i].version + 1,
         );
       }
-      
+
       _updateMapFeatures();
     });
   }
@@ -619,7 +628,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('Stop Tracking?'),
-          content: const Text('You are currently tracking your journey. Do you want to stop tracking and close?'),
+          content: const Text(
+              'You are currently tracking your journey. Do you want to stop tracking and close?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -645,7 +655,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('Unsaved Changes'),
-          content: const Text('You have unsaved changes. Do you want to discard them and close?'),
+          content: const Text(
+              'You have unsaved changes. Do you want to discard them and close?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -671,7 +682,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('Stop Tracking?'),
-          content: const Text('You are currently tracking your journey. Do you want to stop tracking and close?'),
+          content: const Text(
+              'You are currently tracking your journey. Do you want to stop tracking and close?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -694,7 +706,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('Unsaved Changes'),
-          content: const Text('You have unsaved changes. Do you want to discard them and close?'),
+          content: const Text(
+              'You have unsaved changes. Do you want to discard them and close?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -767,6 +780,11 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       return;
     }
 
+    print('Saving ${_stops.length} stops:');
+    for (var stop in _stops) {
+      print('Stop to save: ${stop.toMap()}');
+    }
+
     setState(() => _isSaving = true);
     print('Saving journey...');
 
@@ -816,9 +834,11 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       final mapThumbnailData = await _captureMapThumbnail();
       print('Map thumbnail captured: ${mapThumbnailData != null}');
 
-      final journeyRef = _db.collection('journeys').doc(widget.journeyId ?? _db.collection('journeys').doc().id);
+      final journeyRef = _db
+          .collection('journeys')
+          .doc(widget.journeyId ?? _db.collection('journeys').doc().id);
       print('Journey reference created: ${journeyRef.path}');
-      
+
       final batch = _db.batch();
       final now = DateTime.now();
 
@@ -835,7 +855,9 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         'cost': _cost,
         'recommendedPeople': _recommendedPeople,
         'durationInHours': _durationInHours,
-        'createdAt': widget.journeyId == null ? Timestamp.fromDate(now) : FieldValue.serverTimestamp(),
+        'createdAt': widget.journeyId == null
+            ? Timestamp.fromDate(now)
+            : FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'likes': 0,
         'shadowers': 0,
@@ -859,27 +881,31 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
           'name': stop.name,
           'description': stop.description,
           'location': {
-            'lat': stop.location.latitude,
-            'lng': stop.location.longitude,
+            'latitude': stop.location.latitude,
+            'longitude': stop.location.longitude,
           },
           'order': stop.order,
           'notes': stop.notes,
           'imageData': stop.imageData,
-          'createdAt': widget.journeyId == null ? Timestamp.fromDate(now) : FieldValue.serverTimestamp(),
+          'createdAt': widget.journeyId == null
+              ? Timestamp.fromDate(now)
+              : FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
           'status': 'active',
           'version': 1,
         };
         batch.set(journeyRef.collection('stops').doc(stop.id), stopData);
-        print('Stop added to batch: ${stop.name}');
+        print('Stop added to batch: $stopData');
       }
 
       // Save route points
-      final routePoints = _route.map((point) => {
-        'lat': point.latitude,
-        'lng': point.longitude,
-        'timestamp': Timestamp.fromDate(now),
-      }).toList();
+      final routePoints = _route
+          .map((point) => {
+                'latitude': point.latitude,
+                'longitude': point.longitude,
+                'timestamp': Timestamp.fromDate(now),
+              })
+          .toList();
 
       batch.set(journeyRef.collection('route').doc('points'), {
         'points': routePoints,
@@ -891,10 +917,16 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       await batch.commit();
       print('Batch committed successfully');
 
+      // Verify stops saved
+      final stopsSnapshot = await journeyRef.collection('stops').get();
+      print('Saved stops count: ${stopsSnapshot.docs.length}');
+      for (var stopDoc in stopsSnapshot.docs) {
+        print('Saved stop: ${stopDoc.data()}');
+      }
+
       if (mounted) {
         // Close loading dialog
         Navigator.of(context).pop();
-        
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -902,7 +934,6 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
             backgroundColor: Colors.green,
           ),
         );
-        
         // Navigate to main page
         Navigator.pushReplacementNamed(context, '/main');
       }
@@ -912,13 +943,13 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       if (mounted) {
         // Close loading dialog
         Navigator.of(context).pop();
-        
         // Show error dialog with retry option
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Error Saving Journey'),
-            content: Text('An error occurred while saving your journey: ${e.toString()}'),
+            content: Text(
+                'An error occurred while saving your journey: ${e.toString()}'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -948,7 +979,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
         print('Map controller is null');
         return null;
       }
-      
+
       print('Getting visible region...');
       final bounds = await _mapController!.getVisibleRegion().timeout(
         const Duration(seconds: 5),
@@ -971,9 +1002,11 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       print('Markers prepared: ${_stops.length} stops');
 
       // Prepare path for the route
-      final path = _route.map((point) => '${point.latitude},${point.longitude}').join('|');
+      final path = _route
+          .map((point) => '${point.latitude},${point.longitude}')
+          .join('|');
       print('Path prepared: ${_route.length} points');
-      
+
       // Construct the static map URL
       final staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap'
           '?center=${center.latitude},${center.longitude}'
@@ -1088,9 +1121,11 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                   ElevatedButton.icon(
                     onPressed: () async {
                       try {
-                        final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+                        final image = await ImagePicker()
+                            .pickImage(source: ImageSource.gallery);
                         if (image != null) {
-                          final imageData = await ImageHandler.getImageData(image);
+                          final imageData =
+                              await ImageHandler.getImageData(image);
                           if (imageData != null) {
                             setState(() => _stopImage = imageData);
                           }
@@ -1154,7 +1189,7 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
           status: stop.status,
           version: stop.version + 1,
         );
-        
+
         setState(() {
           final index = _stops.indexWhere((s) => s.id == stop.id);
           if (index != -1) {
@@ -1237,13 +1272,23 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                       child: Column(
                         children: [
                           FloatingActionButton(
-                            onPressed: _isSaving ? null : (_isTracking ? _stopTracking : _startTracking),
-                            backgroundColor: _isTracking ? Colors.red : Colors.green,
-                            tooltip: _isTracking ? 'Stop Tracking' : 'Start Tracking',
-                            child: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
+                            heroTag: 'tracking_main',
+                            onPressed: _isSaving
+                                ? null
+                                : (_isTracking
+                                    ? _stopTracking
+                                    : _startTracking),
+                            backgroundColor:
+                                _isTracking ? Colors.red : Colors.green,
+                            tooltip: _isTracking
+                                ? 'Stop Tracking'
+                                : 'Start Tracking',
+                            child: Icon(
+                                _isTracking ? Icons.stop : Icons.play_arrow),
                           ),
                           const SizedBox(height: 8),
                           FloatingActionButton(
+                            heroTag: 'tracking_add_stop',
                             onPressed: _isSaving ? null : _addStop,
                             backgroundColor: Colors.amber,
                             tooltip: 'Add Stop',
@@ -1269,7 +1314,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.timer, color: Colors.amber),
+                                    const Icon(Icons.timer,
+                                        color: Colors.amber),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Duration: ${_trackingDuration.inMinutes}m ${_trackingDuration.inSeconds % 60}s',
@@ -1282,7 +1328,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(Icons.directions_walk, color: Colors.amber),
+                                    const Icon(Icons.directions_walk,
+                                        color: Colors.amber),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Distance: ${(_totalDistance / 1000).toStringAsFixed(2)} km',
@@ -1308,16 +1355,20 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
                           const Icon(Icons.place, color: Colors.amber),
                           const SizedBox(width: 8),
                           Text(
                             'Journey Stops',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           const Spacer(),
                           if (!_isSaving)
@@ -1330,137 +1381,170 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                       ),
                     ),
                     Expanded(
-                      child: _isSaving 
-                        ? ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _stops.length,
-                            itemBuilder: (context, index) {
-                              final stop = _stops[index];
-                              return Container(
-                                width: 280,
-                                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                child: Card(
-                                  elevation: 2,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildStopImage(stop.imageData),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  backgroundColor: Colors.amber,
-                                                  child: Text('${stop.order}'),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    stop.name,
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 16,
+                      child: _isSaving
+                          ? ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _stops.length,
+                              itemBuilder: (context, index) {
+                                final stop = _stops[index];
+                                return Container(
+                                  width: 280,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  child: Card(
+                                    elevation: 2,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildStopImage(stop.imageData),
+                                        Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    backgroundColor:
+                                                        Colors.amber,
+                                                    child:
+                                                        Text('${stop.order}'),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      stop.name,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
                                                     ),
+                                                  ),
+                                                ],
+                                              ),
+                                              if (stop
+                                                  .description.isNotEmpty) ...[
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  stop.description,
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    color: Colors.grey[400],
+                                                    fontSize: 14,
                                                   ),
                                                 ),
                                               ],
-                                            ),
-                                            if (stop.description.isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                stop.description,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: Colors.grey[400],
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : ReorderableGridView.count(
-                            crossAxisCount: 1,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1.5,
-                            onReorder: _reorderStops,
-                            children: _stops.map((stop) => Card(
-                              key: ValueKey(stop.id),
-                              elevation: 2,
-                              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildStopImage(stop.imageData),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: Colors.amber,
-                                          child: Text('${stop.order}'),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                stop.name,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              if (stop.description.isNotEmpty)
-                                                Text(
-                                                  stop.description,
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    color: Colors.grey[400],
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
                                             ],
                                           ),
-                                        ),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.edit, color: Colors.amber),
-                                              onPressed: () => _editStop(stop),
-                                              tooltip: 'Edit Stop',
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete, color: Colors.red),
-                                              onPressed: () {
-                                                setState(() {
-                                                  _stops.removeWhere((s) => s.id == stop.id);
-                                                  _updateMapFeatures();
-                                                });
-                                              },
-                                              tooltip: 'Delete Stop',
-                                            ),
-                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            )).toList(),
-                          ),
+                                );
+                              },
+                            )
+                          : ReorderableGridView.count(
+                              crossAxisCount: 1,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 1.5,
+                              onReorder: _reorderStops,
+                              children: _stops
+                                  .map((stop) => Card(
+                                        key: ValueKey(stop.id),
+                                        elevation: 2,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            _buildStopImage(stop.imageData),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(8.0),
+                                              child: Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    backgroundColor:
+                                                        Colors.amber,
+                                                    child:
+                                                        Text('${stop.order}'),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          stop.name,
+                                                          style:
+                                                              const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        if (stop.description
+                                                            .isNotEmpty)
+                                                          Text(
+                                                            stop.description,
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                              color: Colors
+                                                                  .grey[400],
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.edit,
+                                                            color:
+                                                                Colors.amber),
+                                                        onPressed: () =>
+                                                            _editStop(stop),
+                                                        tooltip: 'Edit Stop',
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.delete,
+                                                            color: Colors.red),
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            _stops.removeWhere(
+                                                                (s) =>
+                                                                    s.id ==
+                                                                    stop.id);
+                                                            _updateMapFeatures();
+                                                          });
+                                                        },
+                                                        tooltip: 'Delete Stop',
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ))
+                                  .toList(),
+                            ),
                     ),
                   ],
                 ),
@@ -1549,11 +1633,14 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                     child: Text(category),
                                   );
                                 }).toList(),
-                                onChanged: _isSaving ? null : (value) {
-                                  if (value != null) {
-                                    setState(() => _selectedCategory = value);
-                                  }
-                                },
+                                onChanged: _isSaving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(
+                                              () => _selectedCategory = value);
+                                        }
+                                      },
                               ),
                             ),
                           ],
@@ -1578,11 +1665,13 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                     child: Text('Level $level'),
                                   );
                                 }).toList(),
-                                onChanged: _isSaving ? null : (value) {
-                                  if (value != null) {
-                                    setState(() => _difficulty = value);
-                                  }
-                                },
+                                onChanged: _isSaving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(() => _difficulty = value);
+                                        }
+                                      },
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -1603,11 +1692,13 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                     child: Text('Level $level'),
                                   );
                                 }).toList(),
-                                onChanged: _isSaving ? null : (value) {
-                                  if (value != null) {
-                                    setState(() => _cost = value);
-                                  }
-                                },
+                                onChanged: _isSaving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(() => _cost = value);
+                                        }
+                                      },
                               ),
                             ),
                           ],
@@ -1632,11 +1723,14 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                     child: Text('$count people'),
                                   );
                                 }).toList(),
-                                onChanged: _isSaving ? null : (value) {
-                                  if (value != null) {
-                                    setState(() => _recommendedPeople = value);
-                                  }
-                                },
+                                onChanged: _isSaving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(
+                                              () => _recommendedPeople = value);
+                                        }
+                                      },
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -1654,7 +1748,8 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
                                 keyboardType: TextInputType.number,
                                 onChanged: (value) {
                                   setState(() {
-                                    _durationInHours = double.tryParse(value) ?? 1.0;
+                                    _durationInHours =
+                                        double.tryParse(value) ?? 1.0;
                                   });
                                 },
                               ),
@@ -1701,4 +1796,4 @@ class _JourneyTrackingPageState extends State<JourneyTrackingPage> {
       }
     }
   }
-} 
+}

@@ -6,7 +6,7 @@ import 'dart:async';
 enum JourneyMapMode {
   planning, // For CreateJourneyPage
   tracking, // For JourneyMapPage
-  viewing   // For viewing existing journeys
+  viewing // For viewing existing journeys
 }
 
 class JourneyMapWidget extends StatefulWidget {
@@ -84,7 +84,8 @@ class _JourneyMapWidgetState extends State<JourneyMapWidget> {
     }
     if (status == LocationPermission.deniedForever) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location permission is permanently denied')),
+        const SnackBar(
+            content: Text('Location permission is permanently denied')),
       );
       return;
     }
@@ -143,8 +144,10 @@ class _JourneyMapWidgetState extends State<JourneyMapWidget> {
     for (final marker in _markers) {
       if (marker.position.latitude < minLat) minLat = marker.position.latitude;
       if (marker.position.latitude > maxLat) maxLat = marker.position.latitude;
-      if (marker.position.longitude < minLng) minLng = marker.position.longitude;
-      if (marker.position.longitude > maxLng) maxLng = marker.position.longitude;
+      if (marker.position.longitude < minLng)
+        minLng = marker.position.longitude;
+      if (marker.position.longitude > maxLng)
+        maxLng = marker.position.longitude;
     }
 
     final bounds = LatLngBounds(
@@ -185,4 +188,4 @@ class _JourneyMapWidgetState extends State<JourneyMapWidget> {
       onTap: widget.mode == JourneyMapMode.planning ? widget.onMapTap : null,
     );
   }
-} 
+}

@@ -10,10 +10,12 @@ class StopService {
   Future<Map<String, dynamic>?> uploadStopImage(XFile image) async {
     try {
       final bytes = await image.readAsBytes();
-      final ref = _storage.ref().child('stops/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final ref = _storage
+          .ref()
+          .child('stops/${DateTime.now().millisecondsSinceEpoch}.jpg');
       await ref.putData(bytes);
       final url = await ref.getDownloadURL();
-      
+
       return {
         'url': url,
         'path': ref.fullPath,
@@ -29,7 +31,11 @@ class StopService {
 
   Future<void> addStop(String journeyId, journey.Stop stop) async {
     try {
-      final stopRef = _db.collection('journeys').doc(journeyId).collection('stops').doc(stop.id);
+      final stopRef = _db
+          .collection('journeys')
+          .doc(journeyId)
+          .collection('stops')
+          .doc(stop.id);
       await stopRef.set(stop.toMap());
     } catch (e) {
       print('Error adding stop: $e');
@@ -39,7 +45,11 @@ class StopService {
 
   Future<void> updateStop(String journeyId, journey.Stop stop) async {
     try {
-      final stopRef = _db.collection('journeys').doc(journeyId).collection('stops').doc(stop.id);
+      final stopRef = _db
+          .collection('journeys')
+          .doc(journeyId)
+          .collection('stops')
+          .doc(stop.id);
       await stopRef.update(stop.toMap());
     } catch (e) {
       print('Error updating stop: $e');
@@ -49,7 +59,11 @@ class StopService {
 
   Future<void> deleteStop(String journeyId, String stopId) async {
     try {
-      final stopRef = _db.collection('journeys').doc(journeyId).collection('stops').doc(stopId);
+      final stopRef = _db
+          .collection('journeys')
+          .doc(journeyId)
+          .collection('stops')
+          .doc(stopId);
       await stopRef.delete();
     } catch (e) {
       print('Error deleting stop: $e');
@@ -62,7 +76,11 @@ class StopService {
       final batch = _db.batch();
       for (var i = 0; i < stops.length; i++) {
         final stop = stops[i];
-        final stopRef = _db.collection('journeys').doc(journeyId).collection('stops').doc(stop.id);
+        final stopRef = _db
+            .collection('journeys')
+            .doc(journeyId)
+            .collection('stops')
+            .doc(stop.id);
         batch.update(stopRef, {'order': i + 1});
       }
       await batch.commit();
@@ -83,4 +101,4 @@ class StopService {
             .map((doc) => journey.Stop.fromMap(doc.data()))
             .toList());
   }
-} 
+}

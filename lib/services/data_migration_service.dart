@@ -11,7 +11,7 @@ class DataMigrationService {
   // Migration functions for each version
   Future<void> migrateToVersion1() async {
     final batch = _db.batch();
-    
+
     // Migrate users
     final usersSnapshot = await _db.collection('users').get();
     for (var doc in usersSnapshot.docs) {
@@ -40,7 +40,8 @@ class DataMigrationService {
 
     // Migrate stops
     for (var journeyDoc in journeysSnapshot.docs) {
-      final stopsSnapshot = await journeyDoc.reference.collection('stops').get();
+      final stopsSnapshot =
+          await journeyDoc.reference.collection('stops').get();
       for (var doc in stopsSnapshot.docs) {
         final data = doc.data();
         if (!data.containsKey('schemaVersion')) {
@@ -89,7 +90,7 @@ class DataMigrationService {
   Future<bool> needsMigration(String collection, String docId) async {
     final doc = await _db.collection(collection).doc(docId).get();
     if (!doc.exists) return false;
-    
+
     final currentVersion = doc.data()?['schemaVersion'] ?? 0;
     return currentVersion < currentSchemaVersion;
   }
@@ -98,7 +99,7 @@ class DataMigrationService {
   Future<int> getDocumentVersion(String collection, String docId) async {
     final doc = await _db.collection(collection).doc(docId).get();
     if (!doc.exists) return 0;
-    
+
     return doc.data()?['schemaVersion'] ?? 0;
   }
-} 
+}

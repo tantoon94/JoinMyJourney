@@ -45,7 +45,8 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -79,23 +80,23 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.amber,
-                  ),
-                ),
-              );
-            }
-            if (snapshot.hasData) {
-              return const MainNavigator();
-            }
-            return const LoginPage();
-          },
-        ),
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.amber,
+                      ),
+                    ),
+                  );
+                }
+                if (snapshot.hasData) {
+                  return const MainNavigator();
+                }
+                return const LoginPage();
+              },
+            ),
         '/login': (context) => const LoginPage(),
         '/main': (context) => const MainNavigator(),
         '/create_journey': (context) => const CreateJourneyPage(),
@@ -166,6 +167,7 @@ class _MainNavigatorState extends State<MainNavigator> {
     return Scaffold(
       body: _pages[_selectedIndex],
       floatingActionButton: FloatingActionButton(
+        heroTag: 'main_fab',
         onPressed: () => _createNewJourney(context),
         backgroundColor: Colors.amber,
         child: const Icon(Icons.add, color: Colors.black),
@@ -228,7 +230,8 @@ class JourneyMapThumbnail extends StatelessWidget {
   final String participants;
   final double rating;
 
-  const JourneyMapThumbnail({super.key, 
+  const JourneyMapThumbnail({
+    super.key,
     required this.profilePicture,
     required this.duration,
     required this.participants,

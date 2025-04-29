@@ -16,13 +16,13 @@ class ImageStorageService {
       // Create a unique filename with timestamp to avoid conflicts
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filename = '${_uuid.v4()}_$timestamp.jpg';
-      
+
       // Use a simpler path structure
       final path = 'users/profile_pictures/$filename';
-      
+
       // Create the storage reference
       final ref = _storage.ref().child(path);
-      
+
       // Set metadata
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
@@ -34,16 +34,17 @@ class ImageStorageService {
 
       // Upload the file
       final uploadTask = ref.putFile(image, metadata);
-      
+
       // Wait for the upload to complete
       final snapshot = await uploadTask;
-      
+
       // Get the download URL
       final downloadUrl = await snapshot.ref.getDownloadURL();
-      
+
       return downloadUrl;
     } on FirebaseException catch (e) {
-      print('Firebase error uploading profile picture: ${e.code} - ${e.message}');
+      print(
+          'Firebase error uploading profile picture: ${e.code} - ${e.message}');
       if (e.code == 'object-not-found') {
         throw 'Storage path does not exist. Please check Firebase Storage rules.';
       }
@@ -59,7 +60,7 @@ class ImageStorageService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filename = '${_uuid.v4()}_$timestamp.jpg';
       final path = '$_journeyImagesPath/$filename';
-      
+
       final ref = _storage.ref().child(path);
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
@@ -98,10 +99,10 @@ class ImageStorageService {
     try {
       // Convert XFile to File
       final file = File(image.path);
-      
+
       // Compress the image before upload
       final compressedFile = await _compressImage(file);
-      
+
       // Upload based on type
       switch (type) {
         case 'profile':
@@ -121,26 +122,28 @@ class ImageStorageService {
     try {
       // Get the file size
       final fileSize = await file.length();
-      
+
       // If file is already small enough, return as is
-      if (fileSize < 500 * 1024) { // 500KB
+      if (fileSize < 500 * 1024) {
+        // 500KB
         return file;
       }
-      
+
       // Read the file as bytes
       final bytes = await file.readAsBytes();
-      
+
       // Create a temporary file for the compressed image
       final tempDir = await Directory.systemTemp.createTemp();
-      final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      
+      final tempFile = File(
+          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
       // Write the compressed bytes to the temporary file
       await tempFile.writeAsBytes(bytes);
-      
+
       return tempFile;
     } catch (e) {
       print('Error compressing image: $e');
       return file; // Return original file if compression fails
     }
   }
-} 
+}

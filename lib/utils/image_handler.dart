@@ -58,7 +58,7 @@ class ImageHandler {
       final bytes = await image.readAsBytes();
       final compressedBytes = await compressAndResizeImage(bytes);
       if (compressedBytes == null) return null;
-      
+
       return {
         'data': base64Encode(compressedBytes),
         'type': 'image/jpeg',
@@ -113,7 +113,7 @@ class ImageHandler {
       // Encode the image with specified quality
       final compressedBytes = img.encodeJpg(resizedImage, quality: quality);
       if (compressedBytes.isEmpty) return null;
-      
+
       return Uint8List.fromList(compressedBytes);
     } catch (e) {
       print('Error compressing image: $e');
@@ -151,13 +151,24 @@ class ImageHandler {
     double width = double.infinity,
     BoxFit fit = BoxFit.cover,
   }) {
-    print('Building image preview with data: ${imageData != null ? 'present' : 'null'}');
+    print(
+        'Building image preview with data: ${imageData != null ? 'present' : 'null'}');
     if (imageData != null && imageData['data'] != null) {
       try {
         print('Attempting to decode base64 data...');
         // Decode base64 data
         final bytes = base64Decode(imageData['data']);
         print('Successfully decoded base64 data, length: ${bytes.length}');
+        // Defensive checks for cacheWidth/cacheHeight
+        double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+        double rawCacheWidth = width * devicePixelRatio;
+        double rawCacheHeight = height * devicePixelRatio;
+        int cacheWidth = (rawCacheWidth.isNaN || rawCacheWidth.isInfinite)
+            ? 100
+            : rawCacheWidth.toInt();
+        int cacheHeight = (rawCacheHeight.isNaN || rawCacheHeight.isInfinite)
+            ? 100
+            : rawCacheHeight.toInt();
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.memory(
@@ -165,8 +176,8 @@ class ImageHandler {
             height: height,
             width: width,
             fit: fit,
-            cacheWidth: (width * MediaQuery.of(context).devicePixelRatio).toInt(),
-            cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).toInt(),
+            cacheWidth: cacheWidth,
+            cacheHeight: cacheHeight,
             errorBuilder: (context, error, stackTrace) {
               print('Error loading image: $error');
               print('Stack trace: $stackTrace');
@@ -194,4 +205,4 @@ class ImageHandler {
       ),
     );
   }
-} 
+}

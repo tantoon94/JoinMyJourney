@@ -4,10 +4,10 @@ import 'dart:developer' as developer;
 
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  
+
   // Maximum file size (10MB)
   static const int maxFileSize = 10 * 1024 * 1024;
-  
+
   // Allowed file types
   static const List<String> allowedFileTypes = [
     'image/jpeg',
@@ -19,14 +19,14 @@ class StorageService {
   ];
 
   Future<String> uploadFile(
-    File file, 
+    File file,
     String path, {
     Function(double)? onProgress,
     Function(String)? onError,
   }) async {
     try {
       developer.log('Starting file upload: ${file.path}');
-      
+
       // Validate file size
       final fileSize = await file.length();
       developer.log('File size: ${fileSize / 1024 / 1024}MB');
@@ -43,14 +43,15 @@ class StorageService {
 
       final ref = _storage.ref().child(path);
       developer.log('Uploading to path: $path');
-      
+
       final uploadTask = ref.putFile(file);
-      
+
       // Listen to upload progress
       uploadTask.snapshotEvents.listen(
         (TaskSnapshot snapshot) {
           final progress = snapshot.bytesTransferred / snapshot.totalBytes;
-          developer.log('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+          developer
+              .log('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
           onProgress?.call(progress);
         },
         onError: (error) {
@@ -108,7 +109,7 @@ class StorageService {
       final ref = _storage.ref().child(path);
       final result = await ref.listAll();
       developer.log('Found ${result.items.length} files');
-      
+
       final files = await Future.wait(result.items.map((item) async {
         final metadata = await item.getMetadata();
         developer.log('File: ${item.name}, Size: ${metadata.size}');
@@ -118,7 +119,7 @@ class StorageService {
           'size': metadata.size,
         };
       }));
-      
+
       return files;
     } catch (e, stackTrace) {
       developer.log('List files failed', error: e, stackTrace: stackTrace);
@@ -148,7 +149,8 @@ class StorageService {
       developer.log('Download URL retrieved: $url');
       return url;
     } catch (e, stackTrace) {
-      developer.log('Get download URL failed', error: e, stackTrace: stackTrace);
+      developer.log('Get download URL failed',
+          error: e, stackTrace: stackTrace);
       throw 'Failed to get download URL: $e';
     }
   }
