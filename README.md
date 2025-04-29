@@ -1,4 +1,4 @@
-<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="100"/># Join My Journey App
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="100"/> # Join My Journey App
 
 **Join My Journey APP** is your ultimate companion for exploring the city in a fun and engaging way! Whether you're a local looking for new adventures, a traveler seeking unconventional experiences, or a family wanting to explore together, this app has something for everyone.
 
