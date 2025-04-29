@@ -118,3 +118,13 @@ This project is for educational and non-commercial use. See LICENSE file for det
 
 For questions or feedback, contact: Tinasamie@outlook.com
 
+## Declaration of AI Usage
+
+This project was developed with assistance from AI tools:
+
+- **Development Assistance**: Parts of the code were developed with the help of Claude (Anthropic) through the Cursor IDE, which provided code suggestions, debugging assistance, and implementation guidance.
+- **Code Review**: AI was used to review code for best practices, potential improvements, and bug detection.
+- **Documentation**: Some documentation, including parts of this README, were enhanced with AI assistance.
+
+While AI tools were used to accelerate development and improve code quality, all core functionality, business logic, and final implementation decisions were human-reviewed and validated. The project maintains high standards of code quality and security, with AI serving as a development aid rather than a replacement for human judgment.
+
