@@ -4,6 +4,8 @@
 
 Discover personalised routes users create based on their own experiences, complete with exciting stops and activities. It's like Instagram, but with maps! Follow others' journeys, create your own, and share the fun with friends or go solo. Perfect for dates, busy workers, and anyone looking to make the most of their time in the city.
 
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="400" centre/>
+
 ## Who is the app for?
 <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/JoinMYJourney%20-%20Persona%20Empathy%20Map.jpg" width="600"/>
 - **Explorers**: Anyone who wants to discover new places and experiences in their city.
@@ -25,7 +27,7 @@ Discover personalised routes users create based on their own experiences, comple
 <!-- Replace these links with your actual screenshots -->
 <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/Screenshot%202025-04-28%20184323.png" width="600"/>
 
-<img src="https://via.placeholder.com/250x500?text=Create+Journey" width="200"/>
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="400" centre/>
 
 ## App Workflow
 
