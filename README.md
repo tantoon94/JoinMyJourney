@@ -1,4 +1,7 @@
-<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="100"/> 
+
+<div style="text-align: center;">
+  <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="100"/>
+</div>
 
 # Join My Journey App
 
