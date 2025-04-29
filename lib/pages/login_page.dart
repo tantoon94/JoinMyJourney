@@ -174,18 +174,7 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
     });
     try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: credential.identityToken,
-        accessToken: credential.authorizationCode,
-      );
-      final userCredential = await _auth.signInWithCredential(oauthCredential);
-      final user = userCredential.user;
+      final user = await _authService.signInWithApple();
       if (user == null) {
         setState(() {
           _isLoading = false;
@@ -221,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
         // Store user data with all fields
         await _authService.storeUserData(
           user,
-          '${credential.givenName} ${credential.familyName}',
+          user.displayName,
           userType,
         );
         if (!mounted) return;

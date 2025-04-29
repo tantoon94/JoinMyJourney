@@ -6,8 +6,17 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function isAppCheckValid() {
+      return request.app_check.valid;
+    }
+    
     function isOwner(userId) {
       return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     function isValidUserData() {
@@ -34,16 +43,10 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && 
-                   isOwner(userId) && 
-                   isValidUserData() &&
-                   (!request.resource.data.userType == 'Researcher' || isValidResearcherProfile());
-      allow update: if isAuthenticated() && 
-                   isOwner(userId) &&
-                   (request.resource.data.diff(resource.data).affectedKeys()
-                    .hasAny(['displayName', 'bio', 'photoURL', 'preferences', 'interests']));
-      allow delete: if false; // Prevent user deletion, only allow deactivation
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow create: if isAuthenticated() && isAppCheckValid() && isOwner(userId);
+      allow update: if isAuthenticated() && isAppCheckValid() && (isOwner(userId) || isAdmin());
+      allow delete: if isAuthenticated() && isAppCheckValid() && isAdmin();
       
       // User's private data subcollection
       match /private/{document=**} {
@@ -65,10 +68,12 @@ service cloud.firestore {
 
     // Journeys collection
     match /journeys/{journeyId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidJourneyData();
-      allow update: if isAuthenticated() && (isOwner(resource.data.creatorId) || isOwner(request.resource.data.creatorId));
-      allow delete: if isAuthenticated() && isOwner(resource.data.creatorId);
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow create: if isAuthenticated() && isAppCheckValid();
+      allow update: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.creatorId == request.auth.uid || isAdmin());
       
       // Stops subcollection
       match /stops/{stopId} {
@@ -103,6 +108,26 @@ service cloud.firestore {
     match /pins/{pinId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow create: if isAuthenticated() && isAppCheckValid();
+      allow update: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Shadowed journeys collection
+    match /shadowed_journeys/{shadowId} {
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow create: if isAuthenticated() && isAppCheckValid();
+      allow update: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && isAppCheckValid() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
     }
   }
 } 

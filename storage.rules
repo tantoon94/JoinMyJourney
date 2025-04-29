@@ -1,0 +1,43 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAppCheckValid() {
+      return request.app_check.valid;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Profile pictures
+    match /profile_pictures/{userId}/{fileName} {
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow write: if isAuthenticated() && isAppCheckValid() && isOwner(userId) &&
+        request.resource.size < 5 * 1024 * 1024 && // 5MB
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Journey images
+    match /journey_images/{journeyId}/{fileName} {
+      allow read: if isAuthenticated() && isAppCheckValid();
+      allow write: if isAuthenticated() && isAppCheckValid() &&
+        request.resource.size < 10 * 1024 * 1024 && // 10MB
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 

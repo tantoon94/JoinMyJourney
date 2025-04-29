@@ -38,6 +38,10 @@ jobs:
         id: get_flutter_app_version
         run: |
           VERSION=$(yq .version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml | head -n 1)
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format in pubspec.yaml. Expected format: x.y.z"
+            exit 1
+          fi
           echo "TAG_VERSION=$VERSION" >> $GITHUB_OUTPUT
   
       - name: Create git tag
@@ -47,16 +51,60 @@ jobs:
       - name: Install Flutter          
         uses: subosito/flutter-action@v2
         with:
-          channel: 'main'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter installation
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Clean Flutter build
+        run: flutter clean
 
       - name: Get Flutter dependencies    
         run: flutter pub get
 
+      - name: Set up environment variables
+        run: |
+          # Create .env file for build
+          cat << EOF > .env
+          GMS_API_KEY=${{ secrets.GMS_API_KEY }}
+          FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          FIREBASE_IOS_CLIENT_ID=${{ secrets.FIREBASE_IOS_CLIENT_ID }}
+          FIREBASE_IOS_BUNDLE_ID=${{ secrets.FIREBASE_IOS_BUNDLE_ID }}
+          RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
+          EOF
+
       - name: Build APK Release             
         run: flutter build apk --release
+        continue-on-error: false
 
       - name: Build an AppBundle          
         run: flutter build appbundle --release
+        continue-on-error: false
+
+      - name: Verify artifacts exist
+        run: |
+          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            echo "APK file not found!"
+            exit 1
+          fi
+          if [ ! -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            echo "AAB file not found!"
+            exit 1
+          fi
+
+      - name: Report build sizes
+        run: |
+          echo "APK size: $(du -h build/app/outputs/flutter-apk/app-release.apk | cut -f1)"
+          echo "AAB size: $(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)"
 
       - name: Save APK to Artifacts
         uses: actions/upload-artifact@v4 
@@ -71,8 +119,13 @@ jobs:
           path: build/app/outputs/bundle/release/*.aab
 
       - name: Create Github Release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v1
         with:
-          artifacts: "build/app/outputs/bundle/release/*.aab,build/app/outputs/flutter-apk/*.apk"
-          tag: "v${{ steps.get_flutter_app_version.outputs.TAG_VERSION }}"
-          # token: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
+          files: |
+            build/app/outputs/bundle/release/*.aab
+            build/app/outputs/flutter-apk/*.apk
+          tag_name: "v${{ steps.get_flutter_app_version.outputs.TAG_VERSION }}"
+          token: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

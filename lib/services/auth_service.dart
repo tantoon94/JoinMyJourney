@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:developer' as developer;
 
 class AuthService {
@@ -99,6 +100,52 @@ class AuthService {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e, stackTrace) {
       developer.log('Failed to send password reset email', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<User?> signInWithApple() async {
+    try {
+      developer.log('Starting Apple Sign In');
+
+      // Request credential for the currently signed in Apple account
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      // Create an OAuthCredential from the credential returned by Apple
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      // Sign in the user with Firebase
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        developer.log('Apple Sign In successful');
+        
+        // If this is a new user, store their data
+        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+          final displayName = '${appleCredential.givenName} ${appleCredential.familyName}';
+          await storeUserData(
+            user,
+            displayName.trim(),
+            'Regular Member', // Default to Regular Member for Apple Sign In
+          );
+        }
+        
+        return user;
+      } else {
+        developer.log('Apple Sign In failed: No user returned');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      developer.log('Apple Sign In failed', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }

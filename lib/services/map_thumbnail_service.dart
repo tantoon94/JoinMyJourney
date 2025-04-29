@@ -5,9 +5,23 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/image_handler.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapThumbnailService {
-  static const String _apiKey = 'AIzaSyBleoptuqG4muN960mY7UWdTUljJi_Fycc';
+  static String getApiKey() {
+    return dotenv.env['GMS_API_KEY'] ?? '';
+  }
+
+  static String getMapThumbnailUrl(double lat, double lng, {int width = 600, int height = 300}) {
+    return 'https://maps.googleapis.com/maps/api/staticmap?'
+        'center=$lat,$lng'
+        '&zoom=15'
+        '&size=${width}x$height'
+        '&maptype=roadmap'
+        '&markers=color:red%7C$lat,$lng'
+        '&key=${getApiKey()}';
+  }
+
   static const String _cachePrefix = 'map_thumbnail_';
   static const Duration _cacheDuration = Duration(days: 7);
   static const int _maxRetries = 3;
@@ -110,7 +124,7 @@ class MapThumbnailService {
         '&maptype=roadmap'
         '&$markers'
         '&path=color:0xFFFFA500%7Cweight:3%7C$path'
-        '&key=$_apiKey';
+        '&key=${getApiKey()}';
 
     // Retry logic
     for (var attempt = 1; attempt <= _maxRetries; attempt++) {

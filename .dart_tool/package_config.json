@@ -176,6 +176,24 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "firebase_app_check",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_app_check-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
+      "name": "firebase_app_check_platform_interface",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_app_check_platform_interface-0.1.0+29",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
+      "name": "firebase_app_check_web",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_app_check_web-0.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
       "name": "firebase_auth",
       "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/firebase_auth-4.16.0",
       "packageUri": "lib/",
@@ -252,6 +270,12 @@
       "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_cache_manager-3.3.1",
       "packageUri": "lib/",
       "languageVersion": "2.17"
+    },
+    {
+      "name": "flutter_dotenv",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_dotenv-5.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "flutter_launcher_icons",
@@ -950,7 +974,7 @@
       "languageVersion": "3.1"
     }
   ],
-  "generated": "2025-04-28T23:36:32.703798Z",
+  "generated": "2025-04-29T15:46:42.792834Z",
   "generator": "pub",
   "generatorVersion": "3.6.1",
   "flutterRoot": "file:///C:/SDK/Flutter/flutter",
