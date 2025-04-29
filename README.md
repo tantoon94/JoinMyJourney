@@ -1,10 +1,10 @@
-# Join My Journey App
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="100"/># Join My Journey App
 
 **Join My Journey APP** is your ultimate companion for exploring the city in a fun and engaging way! Whether you're a local looking for new adventures, a traveler seeking unconventional experiences, or a family wanting to explore together, this app has something for everyone.
 
 Discover personalised routes users create based on their own experiences, complete with exciting stops and activities. It's like Instagram, but with maps! Follow others' journeys, create your own, and share the fun with friends or go solo. Perfect for dates, busy workers, and anyone looking to make the most of their time in the city.
 
-<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="400" centre/>
+
 
 ## Who is the app for?
 <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/JoinMYJourney%20-%20Persona%20Empathy%20Map.jpg" width="600"/>
