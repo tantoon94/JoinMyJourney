@@ -29,7 +29,7 @@ Discover personalised routes users create based on their own experiences, comple
 <!-- Replace these links with your actual screenshots -->
 <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/Screenshot%202025-04-28%20184323.png" width="600"/>
 
-<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="400" centre/>
+<img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="400" align="center"/>
 
 ## App Workflow
 
