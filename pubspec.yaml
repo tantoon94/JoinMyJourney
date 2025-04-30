@@ -26,7 +26,7 @@ dependencies:
   http: ^1.1.0
   reorderable_grid_view: ^2.2.8
   fl_chart: ^0.65.0
-  share_plus: ^11.0.0
+  share_plus: ^10.0.0
   cached_network_image: ^3.3.0
   permission_handler: ^11.1.0
   image: ^4.1.3
