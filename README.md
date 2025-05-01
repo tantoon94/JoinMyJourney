@@ -1,117 +1,4 @@
-# Join My Journey
 
-A Flutter application that connects researchers with participants for journey tracking and data collection.
-
-## Features
-
-- User authentication (Email, Google, Apple Sign-In)
-- Journey creation and tracking
-- Real-time location updates
-- Social features (following, likes, comments)
-- Researcher-specific features
-- Dark mode support
-- Cross-platform (iOS & Android)
-
-## Getting Started
-
-### Prerequisites
-
-- Flutter SDK (>=3.1.0)
-- Dart SDK (>=3.1.0)
-- Android Studio / Xcode
-- Firebase account
-- Google Maps API key
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/JoinMyJourney.git
-   cd JoinMyJourney
-   ```
-
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-3. Create a `.env` file in the root directory with the following variables:
-   ```
-   GMS_API_KEY=your_google_maps_api_key
-   FIREBASE_API_KEY=your_firebase_api_key
-   FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
-   FIREBASE_PROJECT_ID=your_firebase_project_id
-   FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
-   FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
-   FIREBASE_APP_ID=your_firebase_app_id
-   FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
-   FIREBASE_IOS_CLIENT_ID=your_firebase_ios_client_id
-   FIREBASE_IOS_BUNDLE_ID=your_firebase_ios_bundle_id
-   RECAPTCHA_SITE_KEY=your_recaptcha_site_key
-   ```
-
-4. Configure Firebase:
-   - Create a new Firebase project
-   - Add Android and iOS apps
-   - Download and add the configuration files
-   - Enable Authentication methods
-   - Set up Firestore and Storage
-   - Configure App Check
-
-5. Run the app:
-   ```bash
-   flutter run
-   ```
-
-## Project Structure
-
-```
-lib/
-├── main.dart
-├── firebase_options.dart
-├── services/
-│   ├── auth_service.dart
-│   ├── cache_service.dart
-│   └── data_migration_service.dart
-├── pages/
-│   ├── login_page.dart
-│   ├── feed_page.dart
-│   ├── profile_page.dart
-│   └── ...
-├── widgets/
-│   ├── signup_dialog.dart
-│   ├── profile_preview.dart
-│   └── ...
-└── models/
-    └── ...
-```
-
-## Security
-
-- Firebase App Check enabled
-- Secure authentication methods
-- Environment variables for sensitive data
-- Firestore security rules
-- Storage security rules
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Flutter team for the amazing framework
-- Firebase for backend services
-- Google Maps for location services
-- All contributors who have helped with the project
 
 <div style="text-align: center;">
   <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/assets/logo.png" width="300"/>
@@ -184,6 +71,29 @@ Discover personalised routes users create based on their own experiences, comple
    ```bash
    flutter run
    ```
+5. **Project Structure**:
+
+```
+lib/
+├── main.dart
+├── firebase_options.dart
+├── services/
+│   ├── auth_service.dart
+│   ├── cache_service.dart
+│   └── data_migration_service.dart
+├── pages/
+│   ├── login_page.dart
+│   ├── feed_page.dart
+│   ├── profile_page.dart
+│   └── ...
+├── widgets/
+│   ├── signup_dialog.dart
+│   ├── profile_preview.dart
+│   └── ...
+└── models/
+    └── ...
+```
+
 
 ## API Keys & Configuration
 
