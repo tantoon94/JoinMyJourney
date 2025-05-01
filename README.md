@@ -14,6 +14,7 @@ Discover personalised routes users create based on their own experiences, comple
 
 ## Who is the app for?
 <img src="https://github.com/tantoon94/JoinMyJourney/blob/main/Img/JoinMYJourney%20-%20Persona%20Empathy%20Map.jpg" width="600"/>
+
 - **Explorers**: Anyone who wants to discover new places and experiences in their city.
 - **Travelers**: Visitors seeking unconventional, local experiences.
 - **Families & Friends**: Groups looking for fun, curated walking adventures.
