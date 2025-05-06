@@ -92,3 +92,17 @@ coverage/
 *.swp
 *.swo
 *~
+
+# Project specific
+node_modules/
+package-lock.json
+*.apk
+*.aab
+*.apks
+*.zip
+*.tar.gz
+*.rar
+
+# Keep only the latest release APK
+releases/*
+!releases/join_my_journey_v1.0.0.apk

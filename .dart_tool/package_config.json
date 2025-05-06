@@ -759,21 +759,21 @@
     },
     {
       "name": "sign_in_with_apple",
-      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple-5.0.0",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple-7.0.1",
       "packageUri": "lib/",
-      "languageVersion": "2.18"
+      "languageVersion": "3.3"
     },
     {
       "name": "sign_in_with_apple_platform_interface",
-      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple_platform_interface-1.1.0",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple_platform_interface-2.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
     {
       "name": "sign_in_with_apple_web",
-      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple_web-1.0.1",
+      "rootUri": "file:///C:/Users/Tina/AppData/Local/Pub/Cache/hosted/pub.dev/sign_in_with_apple_web-3.0.0",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.3"
     },
     {
       "name": "sky_engine",
@@ -974,7 +974,7 @@
       "languageVersion": "3.1"
     }
   ],
-  "generated": "2025-04-30T13:00:13.831217Z",
+  "generated": "2025-05-06T12:23:30.190153Z",
   "generator": "pub",
   "generatorVersion": "3.6.1",
   "flutterRoot": "file:///C:/SDK/Flutter/flutter",

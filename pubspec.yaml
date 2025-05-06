@@ -33,7 +33,7 @@ dependencies:
   intl: ^0.18.1
   url_launcher: ^6.2.2
   google_sign_in: ^6.1.6
-  sign_in_with_apple: ^5.0.0
+  sign_in_with_apple: ^7.0.0
   path: ^1.8.3
   location: ^5.0.3
   uuid: ^4.2.1
