@@ -36,6 +36,10 @@ Discover personalised routes users create based on their own experiences, comple
 
 ## App Workflow
 
+
+https://github.com/user-attachments/assets/cbac9b24-e65f-4ad1-b8d7-bc2a6df1697c
+
+
 1. **Sign Up / Login**: Users can register or sign in using email, Google, or Apple. User type (Regular Member or Researcher) is selected at sign up.
 2. **Browse & Search**: Users can browse featured journeys or search for routes by keywords, category, or location.
 3. **View Journey Details**: Each journey shows a mapped route, stops, descriptions, and photos.
