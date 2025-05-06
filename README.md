@@ -54,9 +54,6 @@ https://github.com/user-attachments/assets/cbac9b24-e65f-4ad1-b8d7-bc2a6df1697c
   2. Download the latest `.apk` file to your Android device.
   3. Open the file to install (you may need to allow installation from unknown sources).
 
-- **iOS (TestFlight):**
-  1. Request access to the TestFlight beta by contacting the developer at Tinasamie@outlook.com.
-  2. You will receive an invitation link to download the app via TestFlight.
 
 ## Developer Setup & Installation
 
